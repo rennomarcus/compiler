@@ -1,0 +1,154 @@
+#include "scan.hpp"
+
+Scan_file::Scan_file(std::string name) {
+    this->name = name;
+    ifstream *tmp_file = new ifstream(name);
+
+    myfile = tmp_file;
+    create_table();
+}
+Scan_file::~Scan_file(void) {
+    std::cout << "closing file";
+    myfile->close();
+}
+
+int Scan_file::get_tok() {
+    return this->token;
+}
+
+std::string Scan_file::get_value() {
+    return this->value;
+}
+
+int Scan_file::scan_tok() {
+    char ch;
+    std::string IdentifierStr;
+
+    if (myfile->is_open())
+    {
+
+        this->token = T_UNKNOWN;
+        (*myfile).get(ch);
+
+        if (myfile->eof()) {
+            this->token = T_EOF;
+            return T_EOF;
+        }
+        while (isspace(ch)) {
+            (*myfile).get(ch);
+            if (myfile->eof()) {
+                this->token = T_EOF;
+                return T_EOF;
+            }
+        }
+
+        if (isalpha(ch)) { // identifier: [a-zA-Z][a-zA-Z0-9]*
+            IdentifierStr = ch;
+
+            while (!isspace(ch)) {
+                (*myfile).get(ch);
+                if (isalnum(ch) || ch == '_')
+                    IdentifierStr += tolower(ch);
+                else {
+                    (*myfile).putback(ch);
+                    break;
+                }
+            }
+            this->value = IdentifierStr;
+            this->token = lookup(IdentifierStr);
+            return this->token;
+        }
+
+        if (isdigit(ch) || ch == '.') {   // Number: [0-9.]+
+            std::string NumStr;
+            std::string period = ".";
+            do {
+                NumStr += ch;
+                (*myfile).get(ch);
+            } while (isdigit(ch) || ch == '.');
+
+            std::size_t found = NumStr.find(period);
+            if (found!=std::string::npos){
+                double value = strtod(NumStr.c_str(), 0);
+                this->value = value;
+                return T_FLOAT;
+            }
+            else {
+                (*myfile).putback(ch);
+            }
+            int value = strtod(NumStr.c_str(), 0);
+            this->value = value;
+            return T_INTEGER;
+        }
+
+        if (ch == EOF)
+            return T_EOF;
+
+        if (ch == ':') {
+            (*myfile).get(ch);
+            if (ch != '=')
+                (*myfile).putback(ch);
+            else {
+                this->token = T_ASSIGN;
+                return T_ASSIGN;
+            }
+        }
+        this->token = ch;
+        //std::cout << "TOKEN " <<  ch << "\n";
+        return ch;
+
+    }
+    else{
+        cout << "error?";
+            return T_EOF;
+    }
+
+    return T_EOF;
+}
+void Scan_file::insert_reserved(char *t_value,int t_type) {
+    this->g_table[t_type] = new char[strlen(t_value)];
+    this->g_table[t_type] = t_value;
+}
+void Scan_file::create_table() {
+    insert_reserved("while", TABLE_VALUE(T_WHILE));
+    insert_reserved("if", TABLE_VALUE(T_IF));
+    insert_reserved("then", TABLE_VALUE(T_THEN));
+    insert_reserved("else", TABLE_VALUE(T_ELSE));
+    insert_reserved("for", TABLE_VALUE(T_FOR));
+    insert_reserved("return", TABLE_VALUE(T_RETURN));
+    insert_reserved("program", TABLE_VALUE(T_PROGRAM));
+    insert_reserved("is", TABLE_VALUE(T_IS));
+    insert_reserved("procedure", TABLE_VALUE(T_PROCEDURE));
+    insert_reserved("global", TABLE_VALUE(T_GLOBAL));
+    insert_reserved("begin", TABLE_VALUE(T_BEGIN));
+    insert_reserved("end", TABLE_VALUE(T_END));
+    insert_reserved("number", TABLE_VALUE(T_NUMBER));
+    insert_reserved("integer", TABLE_VALUE(T_INTEGER));
+    insert_reserved("float", TABLE_VALUE(T_FLOAT));
+    insert_reserved("string", TABLE_VALUE(T_STRING));
+    //272 = IDENTIFIER
+    insert_reserved("in", TABLE_VALUE(T_IN));
+    insert_reserved("out", TABLE_VALUE(T_OUT));
+    insert_reserved("inout", TABLE_VALUE(T_INOUT));
+
+}
+
+void Scan_file::display_table() {
+    int i;
+    std::string val = "procedure";
+    for (i = 0; i < MAX_RESERVED_KEYS; i++) {
+        cout << "#" << i << " " << g_table[i] << endl;
+    }
+}
+
+int Scan_file::lookup(std::string value) {
+    int i;
+
+    for (i = 0; i < MAX_RESERVED_KEYS; i++) {
+        if (value.compare(this->g_table[i]) == 0)
+            return SYMBOL_VALUE(i);
+    }
+    return T_IDENTIFIER;
+}
+
+
