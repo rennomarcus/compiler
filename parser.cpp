@@ -46,13 +46,14 @@ void HandleTopLevelExpression(Scan_file *scan, Main_block *mblock) {
         case T_IDENTIFIER:
             //IDENT ASSIGN VALUE | 272 276 (???) assign value
             //IDENT LEFT_PARENT... | call function
-            HandleExpression(scan, mblock);
+            HandleStatement(scan, mblock);
             break;
     }
 }
 
-llvm::Value* HandleExpression(Scan_file *scan, Main_block *mblock) {
+llvm::Value* HandleStatement(Scan_file *scan, Main_block *mblock) {
     std::cout << "handle expr " << std::endl;
+
     if (scan->get_tok() == T_IDENTIFIER) {
         std::string name = scan->get_value();
         if (scan->scan_tok() == T_LPAREN) {
@@ -62,20 +63,31 @@ llvm::Value* HandleExpression(Scan_file *scan, Main_block *mblock) {
                 ;
         }
         if (scan->get_tok() == T_ASSIGN) {
-            //HandleMath;
+            //HandleMath(scan, mblock);
             std::cout << "#var assigning " << std::endl;
             while (scan->scan_tok() != T_SEMICOLON)
                 ;
         }
     }
+
     llvm::Value* test;
     return test;
 }
 
+/*
+llvm::Value* HandleMath(Scan_file *scan, Main_block *mblock) {
+    std::cout << scan->get_tok() << std::endl;
+
+    if (scan->get_tok() == T_IDENTIFIER) {
+        return this->local_var[scan->get_value()];
+    }
+
+}*/
+
 //handle beginning and closing program
 void HandleProgram(Scan_file *scan, Main_block *mblock) {
-    std::string name = scan->get_value();
     scan->scan_tok();
+    std::string name = scan->get_value();
     if (scan->scan_tok() != T_IS && state == 0) {
         Error("Missing \'is\' in program declaration");
     }
@@ -131,7 +143,8 @@ VariableAST* HandleVariableDeclaration(Scan_file *scan, Main_block *mblock) {
         return nullptr;
     }
     std::cout << type << " " << scan->get_value() << std::endl;
-    VariableAST *var = new VariableAST(scan->get_value(), type);
+    std::string var_name = scan->get_value();
+    VariableAST *var = new VariableAST(var_name, type);
 
     //if it is an internal variable add it to the block
     if (scan->scan_tok() == T_SEMICOLON) { //go to next token = discard semicolon
@@ -142,7 +155,7 @@ VariableAST* HandleVariableDeclaration(Scan_file *scan, Main_block *mblock) {
     if (scan->get_tok() == T_IN || scan->get_tok() == T_OUT || scan->get_tok() == T_INOUT) {
         //add as arg to back block in mblock
         if (scan->get_tok() == T_IN)
-            mblock->add_arg(scan->get_value(), typeOf(type));
+            mblock->add_arg(var_name, typeOf(type));
 
         if (scan->get_tok() == T_OUT)
             ;///TODO create return type

@@ -36,7 +36,8 @@ int main () {
 
 
     }
-    //module->codegen();
-    //module->show_dump();
+    std::cout << std::endl << std::endl << std::endl;
+    module->codegen();
+    module->show_dump();
     return 0;
 }

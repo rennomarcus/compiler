@@ -33,11 +33,17 @@ void Main_block::codegen() {
     this->mod = llvm::make_unique<Module>(this->name, getGlobalContext());
     std::vector<Type *> args;
     //args.push_back(typeOf("void"));
-    FunctionType *ftype = FunctionType::get(Type::getVoidTy(getGlobalContext()), args, false);
+
+    /*FunctionType *ftype = FunctionType::get(Type::getVoidTy(getGlobalContext()), args, false);
     Function *main_function = Function::Create(ftype, GlobalValue::InternalLinkage, this->name, this->mod.get() );
     BasicBlock *bb = BasicBlock::Create(getGlobalContext(), "entry", main_function);
-    Builder.SetInsertPoint(bb);
+    Builder.SetInsertPoint(bb);*/
+    std::vector<FunctionAST*>::iterator it;
+    for (it = (this->functions).begin(); it != (this->functions).end(); it++) {
+        (*it)->codegen(this);
+    }
 
+    /*
     FunctionType *ftype2 = FunctionType::get(Type::getInt32Ty(getGlobalContext()), args, false);
     Function *other = Function::Create(ftype2, GlobalValue::InternalLinkage, "other",  this->get_module());
     BasicBlock *bb2 = BasicBlock::Create(getGlobalContext(), "entry", other);
@@ -57,7 +63,7 @@ void Main_block::codegen() {
 
     FunctionAST *test = new FunctionAST("test");
     VariableAST *var = new VariableAST("x", T_INTEGER);
-    test->add_statement(var);
+    //test->add_statement(var);*/
 }
 void FunctionAST::add_arg(std::string var, llvm::Type* var_type) {
     if (this->args[var]) {
@@ -65,7 +71,7 @@ void FunctionAST::add_arg(std::string var, llvm::Type* var_type) {
     }
     this->args[var] = var_type;
 }
-void FunctionAST::add_statement(StatementAST* stat) {
+void FunctionAST::add_statement(BasicAST* stat) {
     this->list_statement.push_back(stat);
 }
 
@@ -80,20 +86,40 @@ std::vector<Type *> FunctionAST::get_args_type() {
     return types;
 }
 
-void FunctionAST::codegen(llvm::Module* mod) {
-    /*FunctionType *ftype2 = FunctionType::get(Type::getInt32Ty(getGlobalContext()), args_type, false);
-    Function *func = Function::Create(ftype2, GlobalValue::InternalLinkage, this->name,  mod);
+llvm::Value* FunctionAST::codegen(Main_block *mblock) {
+    std::vector<Type *> args_type = get_args_type();
+    FunctionType *ftype = FunctionType::get(Type::getVoidTy(getGlobalContext()), args_type, false);
+    Function *func = Function::Create(ftype, GlobalValue::InternalLinkage, this->name,  mblock->get_module());
     BasicBlock *bb = BasicBlock::Create(getGlobalContext(), "entry", func);
-    this->bb = bb;*/
+
+    auto my_arg = this->args.begin();
+    for (auto args = func->arg_begin(); args != func->arg_end(); ++args) {
+        Value *x = args;
+        x->setName(my_arg->first);
+
+        my_arg++;
+    }
+
+    this->bb = bb;
+    mblock->add_block(bb);
+    Builder.SetInsertPoint(bb);
+    for (auto it = list_statement.begin(); it != list_statement.end(); it++) {
+        (*it)->codegen(mblock);
+        std::cout << "here";
+    }
+
+    return nullptr;
+
 }
 
 
 
-Value* VariableAST::codegen(llvm::BasicBlock* bb) {
+Value* VariableAST::codegen(Main_block* mblock) {
+    std::cout << "#############################Var";
     switch(this->var_type) {
         case T_INTEGER:
-            AllocaInst *alloc = new AllocaInst(Type::getInt32Ty(getGlobalContext()) , this->name.c_str(), bb);
-
+            AllocaInst *alloc = new AllocaInst(Type::getInt32Ty(getGlobalContext()) , this->name.c_str(), mblock->get_block());
+            return alloc;
     }
 
 }
