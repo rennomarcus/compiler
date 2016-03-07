@@ -70,14 +70,16 @@ int Scan_file::scan_tok() {
             std::size_t found = NumStr.find(period);
             if (found!=std::string::npos){
                 double value = strtod(NumStr.c_str(), 0);
-                this->value = value;
+                this->value = NumStr.c_str();
+                this->token = T_FLOAT;
                 return T_FLOAT;
             }
             else {
                 (*myfile).putback(ch);
             }
-            int value = strtod(NumStr.c_str(), 0);
-            this->value = value;
+            //int value = strtod(, 0);
+            this->value = NumStr.c_str();
+            this->token = T_INTEGER;
             return T_INTEGER;
         }
 

@@ -4,11 +4,11 @@ program test_program is
         integer b;
     begin
         b := 3;
-        y := b;
+        y := 10;
     end procedure;
 begin
-    a := 3;
-    f(3, a);
+    a := 5;
+    f(6, a);
     putInteger(a);
     
 end program .

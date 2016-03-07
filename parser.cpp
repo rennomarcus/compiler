@@ -51,7 +51,14 @@ void HandleTopLevelExpression(Scan_file *scan, Main_block *mblock) {
     }
 }
 
-llvm::Value* HandleStatement(Scan_file *scan, Main_block *mblock) {
+//3 + 4 * 10
+BasicAST* HandleMath(Scan_file *scan, Main_block *mblock) {
+    Shunting *equation = new Shunting(scan);
+    equation->print();
+    return equation->read();
+}
+
+void HandleStatement(Scan_file *scan, Main_block *mblock) {
     std::cout << "handle expr " << std::endl;
 
     if (scan->get_tok() == T_IDENTIFIER) {
@@ -63,26 +70,15 @@ llvm::Value* HandleStatement(Scan_file *scan, Main_block *mblock) {
                 ;
         }
         if (scan->get_tok() == T_ASSIGN) {
-            //HandleMath(scan, mblock);
+
             std::cout << "#var assigning " << std::endl;
-            while (scan->scan_tok() != T_SEMICOLON)
-                ;
+            AssignAST* assign_var = new AssignAST(name, HandleMath(scan, mblock));
+            mblock->add_statement(assign_var);
         }
     }
-
-    llvm::Value* test;
-    return test;
 }
 
-/*
-llvm::Value* HandleMath(Scan_file *scan, Main_block *mblock) {
-    std::cout << scan->get_tok() << std::endl;
 
-    if (scan->get_tok() == T_IDENTIFIER) {
-        return this->local_var[scan->get_value()];
-    }
-
-}*/
 
 //handle beginning and closing program
 void HandleProgram(Scan_file *scan, Main_block *mblock) {
@@ -165,5 +161,3 @@ VariableAST* HandleVariableDeclaration(Scan_file *scan, Main_block *mblock) {
         return var;
     }
 }
-
-

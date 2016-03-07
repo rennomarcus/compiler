@@ -24,6 +24,10 @@ void Main_block::add_var(VariableAST* var) {
     FunctionAST *func = this->functions.back();
     func->add_var(var);
 }
+void Main_block::add_statement(BasicAST* stat) {
+    FunctionAST *func = this->functions.back();
+    func->add_statement(stat);
+}
 void Main_block::add_arg(std::string name, llvm::Type* var_type) {
     FunctionAST *func = this->functions.back();
     func->add_arg(name, var_type);
@@ -41,6 +45,9 @@ void Main_block::codegen() {
     std::vector<FunctionAST*>::iterator it;
     for (it = (this->functions).begin(); it != (this->functions).end(); it++) {
         (*it)->codegen(this);
+        //???? should i put this down here????
+        drop_block();
+        Builder.SetInsertPoint(get_block());
     }
 
     /*
@@ -71,6 +78,15 @@ void FunctionAST::add_arg(std::string var, llvm::Type* var_type) {
     }
     this->args[var] = var_type;
 }
+void FunctionAST::add_var(VariableAST* var) {
+    if (this->local_var[var->get_name()]) {
+        Error("Variable already created!");
+    }
+    else { //remove this else, if Error stops program.
+        this->local_var[var->get_name()] = nullptr;
+        list_statement.push_back(var);
+    }
+}
 void FunctionAST::add_statement(BasicAST* stat) {
     this->list_statement.push_back(stat);
 }
@@ -91,7 +107,7 @@ llvm::Value* FunctionAST::codegen(Main_block *mblock) {
     FunctionType *ftype = FunctionType::get(Type::getVoidTy(getGlobalContext()), args_type, false);
     Function *func = Function::Create(ftype, GlobalValue::InternalLinkage, this->name,  mblock->get_module());
     BasicBlock *bb = BasicBlock::Create(getGlobalContext(), "entry", func);
-
+    std::cout << "Function created: " << this->name << std::endl;
     auto my_arg = this->args.begin();
     for (auto args = func->arg_begin(); args != func->arg_end(); ++args) {
         Value *x = args;
@@ -105,24 +121,66 @@ llvm::Value* FunctionAST::codegen(Main_block *mblock) {
     Builder.SetInsertPoint(bb);
     for (auto it = list_statement.begin(); it != list_statement.end(); it++) {
         (*it)->codegen(mblock);
-        std::cout << "here";
     }
 
     return nullptr;
 
 }
 
-
-
-Value* VariableAST::codegen(Main_block* mblock) {
-    std::cout << "#############################Var";
-    switch(this->var_type) {
-        case T_INTEGER:
-            AllocaInst *alloc = new AllocaInst(Type::getInt32Ty(getGlobalContext()) , this->name.c_str(), mblock->get_block());
-            return alloc;
-    }
-
+int FunctionAST::change_var_value(std::string var, llvm::Value* value) {
+    std::cout << "CHANGING " << var << std::endl;
+    this->local_var[var] = value;
+    return 1;
 }
 
+Value* VariableAST::codegen(Main_block* mblock) {
+    AllocaInst *alloc;
+    FunctionAST *func = mblock->get_func();
+    std::cout << "Creating var: " << this->name << std::endl;
+    switch(this->var_type) {
+        case T_INTEGER:
+            alloc = new AllocaInst(Type::getInt32Ty(getGlobalContext()) , this->name.c_str(), mblock->get_block());
+            break;
+        case T_FLOAT:
+            alloc = new AllocaInst(Type::getFloatTy(getGlobalContext()) , this->name.c_str(), mblock->get_block());
+            break;
+    }
 
+    func->change_var_value(this->name, alloc);
+    return alloc;
+}
 
+Value* AssignAST::codegen(Main_block* mblock) {
+    StoreInst* test;
+    FunctionAST *func = mblock->get_func();
+
+    llvm::Value* code = (this->value)->codegen(mblock);
+    std::cout << "*******assigning" << this->get_name() << std::endl;
+    if (func->change_var_value(get_name(),code)) {
+        std::cout << "******" << std::endl;
+        llvm::Value* var = func->get_var(this->get_name());
+        return new StoreInst(code, var, false, mblock->get_block());
+    }
+    return nullptr;
+}
+
+Value* CallExprAST::codegen(Main_block* mblock) {
+    //CallInst *call = CallInst::Create(function, args.begin(), args.end(), "", context.currentBlock());
+    return nullptr;
+}
+
+Value* IntegerAST::codegen(Main_block* mblock) {
+    std::cout << "Creating integer: " << value << std::endl;
+    return ConstantInt::get(Type::getInt32Ty(getGlobalContext()), value, true);
+}
+Value* FloatAST::codegen(Main_block* mblock) {
+    return nullptr;
+}
+
+Value* BinopAST::codegen(Main_block* mblock) {
+    return nullptr;
+}
+
+Value* CallVarAST::codegen(Main_block* mblock) {
+    return nullptr;
+}

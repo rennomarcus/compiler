@@ -18,9 +18,15 @@ using namespace llvm;
 
 llvm::IRBuilder<> Builder(llvm::getGlobalContext());
 int state = 0;
+std::map<char, int> BinopPrecedence;
 
 int main () {
-
+    BinopPrecedence['+'] = 1;
+    BinopPrecedence['-'] = 1;
+    BinopPrecedence['*'] = 2;
+    BinopPrecedence['/'] = 2;
+    BinopPrecedence['('] = 3;
+    BinopPrecedence[')'] = 3;
     //lexer
     std::string file_name = "test.src";
     Scan_file *scan = new Scan_file(file_name);
@@ -32,10 +38,9 @@ int main () {
     while (scan->scan_tok() != T_EOF) {
         //parser
         parser(scan,module);
-
-
-
     }
+
+    //codegen
     std::cout << std::endl << std::endl << std::endl;
     module->codegen();
     module->show_dump();

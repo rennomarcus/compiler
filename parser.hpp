@@ -4,13 +4,14 @@
 #include "ast.hpp"
 #include "scan.hpp"
 #include "global.hpp"
+#include "shunting_yard.h"
 #include <stack>
 #include <llvm/ExecutionEngine/GenericValue.h>
 
 void HandleProgram(Scan_file *, Main_block *);
 void HandleFunction(Scan_file *, Main_block *);
 void HandleTopLevelExpression(Scan_file*, Main_block*);
-llvm::Value* HandleStatement(Scan_file*, Main_block*);
+void HandleStatement(Scan_file*, Main_block*);
 VariableAST* HandleVariableDeclaration(Scan_file *, Main_block *);
 llvm::Value* parser(Scan_file *, Main_block *);
 

@@ -1,5 +1,5 @@
 # depslib dependency file v1.0
-1457054176 source:/home/marcus/workspace/compiler/my_compiler/main.cpp
+1457307199 source:/home/marcus/workspace/compiler/my_compiler/main.cpp
 	"llvm/ADT/STLExtras.h"
 	"llvm/IR/IRBuilder.h"
 	"llvm/IR/LLVMContext.h"
@@ -568,16 +568,16 @@
 	<string>
 	"global.hpp"
 
-1456689472 /home/marcus/workspace/compiler/my_compiler/global.hpp
+1457284800 /home/marcus/workspace/compiler/my_compiler/global.hpp
 	"llvm/IR/IRBuilder.h"
 
-1456804245 source:/home/marcus/workspace/compiler/my_compiler/scan.cpp
+1457285600 source:/home/marcus/workspace/compiler/my_compiler/scan.cpp
 	"scan.hpp"
 
-1457058691 source:/home/marcus/workspace/compiler/my_compiler/ast.cpp
+1457309805 source:/home/marcus/workspace/compiler/my_compiler/ast.cpp
 	"ast.hpp"
 
-1457058734 /home/marcus/workspace/compiler/my_compiler/ast.hpp
+1457309436 /home/marcus/workspace/compiler/my_compiler/ast.hpp
 	"llvm/ADT/STLExtras.h"
 	"llvm/IR/IRBuilder.h"
 	"llvm/IR/LLVMContext.h"
@@ -590,13 +590,14 @@
 	"global.hpp"
 	"scan.hpp"
 
-1457058006 source:/home/marcus/workspace/compiler/my_compiler/parser.cpp
+1457307052 source:/home/marcus/workspace/compiler/my_compiler/parser.cpp
 	"parser.hpp"
 
-1457055618 /home/marcus/workspace/compiler/my_compiler/parser.hpp
+1457304278 /home/marcus/workspace/compiler/my_compiler/parser.hpp
 	"ast.hpp"
 	"scan.hpp"
 	"global.hpp"
+	"shunting_yard.h"
 	<stack>
 	<llvm/ExecutionEngine/GenericValue.h>
 
@@ -606,4 +607,16 @@
 
 1456689452 source:/home/marcus/workspace/compiler/my_compiler/global.cpp
 	"global.hpp"
+
+1457296332 /home/marcus/workspace/compiler/my_compiler/shunting_yard.h
+	<string>
+	<vector>
+	<map>
+	<iostream>
+	"global.hpp"
+	"scan.hpp"
+	"ast.hpp"
+
+1457296559 source:/home/marcus/workspace/compiler/my_compiler/shunting_yard.cpp
+	"shunting_yard.h"
 

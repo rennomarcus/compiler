@@ -8,9 +8,11 @@ extern int g_line;
 extern int state;
 //extern std::unique_ptr<llvm::Module> TheModule;
 extern llvm::IRBuilder<> Builder;
+extern std::map<char, int> BinopPrecedence;
 
 /// Error* - These are little helper functions for error handling.
 void Error(const char *Str);
+
 
 #endif __GLOBAL_H
 
