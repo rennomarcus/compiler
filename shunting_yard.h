@@ -11,15 +11,22 @@
 struct token_struct {
     int token_type;
     std::string value;
+
 } typedef token;
 class Shunting {
     std::vector<token> equation;
     std::vector<char> operators;
+    int parenthesis;
 
     public:
+    void inc_parenthesis() { parenthesis++; }
+    void dec_parenthesis() { parenthesis--; }
+    void set_parenthesis(int value) { parenthesis = value; }
+    int get_parenthesis() { return parenthesis; }
     Shunting(Scan_file *scan);
+    void gen_equation(Scan_file *scan);
     void print();
-    BasicAST* read();
+    std::vector<BasicAST*> read();
 
 };
 

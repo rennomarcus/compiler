@@ -3,8 +3,13 @@ program test_program is
     procedure f (integer x in, integer y out)
         integer b;
     begin
-        b := 3;
+        b := 3+2*6+10;
         y := 10;
+        if (b == 25) then
+            m := "marcus";
+        else
+            m := "vinicius";
+        end if;
     end procedure;
 begin
     a := 5;

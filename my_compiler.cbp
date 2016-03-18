@@ -33,12 +33,15 @@
 		</Compiler>
 		<Unit filename="ast.cpp" />
 		<Unit filename="ast.hpp" />
+		<Unit filename="global.cpp" />
 		<Unit filename="global.hpp" />
 		<Unit filename="main.cpp" />
 		<Unit filename="parser.cpp" />
 		<Unit filename="parser.hpp" />
 		<Unit filename="scan.cpp" />
 		<Unit filename="scan.hpp" />
+		<Unit filename="shunting_yard.cpp" />
+		<Unit filename="shunting_yard.h" />
 		<Extensions>
 			<code_completion />
 			<debugger />

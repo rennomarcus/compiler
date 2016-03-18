@@ -132,6 +132,8 @@ void Scan_file::create_table() {
     insert_reserved("in", TABLE_VALUE(T_IN));
     insert_reserved("out", TABLE_VALUE(T_OUT));
     insert_reserved("inout", TABLE_VALUE(T_INOUT));
+    insert_reserved("true", TABLE_VALUE(T_TRUE));
+    insert_reserved("false", TABLE_VALUE(T_FALSE));
 
 }
 

@@ -45,9 +45,6 @@ void Main_block::codegen() {
     std::vector<FunctionAST*>::iterator it;
     for (it = (this->functions).begin(); it != (this->functions).end(); it++) {
         (*it)->codegen(this);
-        //???? should i put this down here????
-        drop_block();
-        Builder.SetInsertPoint(get_block());
     }
 
     /*
@@ -107,6 +104,7 @@ llvm::Value* FunctionAST::codegen(Main_block *mblock) {
     FunctionType *ftype = FunctionType::get(Type::getVoidTy(getGlobalContext()), args_type, false);
     Function *func = Function::Create(ftype, GlobalValue::InternalLinkage, this->name,  mblock->get_module());
     BasicBlock *bb = BasicBlock::Create(getGlobalContext(), "entry", func);
+    this->func = func;
     std::cout << "Function created: " << this->name << std::endl;
     auto my_arg = this->args.begin();
     for (auto args = func->arg_begin(); args != func->arg_end(); ++args) {
@@ -153,14 +151,21 @@ Value* VariableAST::codegen(Main_block* mblock) {
 Value* AssignAST::codegen(Main_block* mblock) {
     StoreInst* test;
     FunctionAST *func = mblock->get_func();
+    std::cout << "Assigning var: " << get_name() << std::endl;
 
-    llvm::Value* code = (this->value)->codegen(mblock);
-    std::cout << "*******assigning" << this->get_name() << std::endl;
-    if (func->change_var_value(get_name(),code)) {
-        std::cout << "******" << std::endl;
-        llvm::Value* var = func->get_var(this->get_name());
-        return new StoreInst(code, var, false, mblock->get_block());
+    llvm::Value* lhs = func->get_var(get_name());
+    std::vector<BasicAST*> rhs = this->rhs;
+    llvm::Value* temp;
+    for (auto it = rhs.begin(); it != rhs.end(); it++) {
+        temp = (*it)->codegen(mblock);
     }
+
+    llvm::Value* code = temp;
+    std::cout << "*assigning " << this->get_name() << std::endl;
+    if (lhs) {
+        return new StoreInst(code, lhs, false, mblock->get_block());
+    }
+
     return nullptr;
 }
 
@@ -171,16 +176,92 @@ Value* CallExprAST::codegen(Main_block* mblock) {
 
 Value* IntegerAST::codegen(Main_block* mblock) {
     std::cout << "Creating integer: " << value << std::endl;
-    return ConstantInt::get(Type::getInt32Ty(getGlobalContext()), value, true);
+    return ConstantInt::get(Type::getInt32Ty(getGlobalContext()), value);
 }
 Value* FloatAST::codegen(Main_block* mblock) {
     return nullptr;
 }
 
 Value* BinopAST::codegen(Main_block* mblock) {
-    return nullptr;
+    std::cout << "Creating Binary operation: " << op << std::endl;
+    llvm::Value* lhs = (this->op1)->codegen(mblock);
+    llvm::Value* rhs = (this->op2)->codegen(mblock);
+    Value* binop;
+    if (this->op == '+')
+        binop = BinaryOperator::Create(Instruction::Add, lhs, rhs, "add", mblock->get_block());
+    else if (this->op == '-')
+        binop = BinaryOperator::Create(Instruction::Sub, lhs, rhs, "sub", mblock->get_block());
+    else if (this->op == '*')
+        binop = BinaryOperator::Create(Instruction::Mul, lhs, rhs, "mul", mblock->get_block());
+    else if (this->op == '/')
+        binop = BinaryOperator::Create(Instruction::SDiv, lhs, rhs, "div", mblock->get_block());
+
+    return binop;
 }
 
 Value* CallVarAST::codegen(Main_block* mblock) {
+    std::cout << "Getting var " << get_var() << " value" << std::endl;
+    std::string var_name = get_var();
+    FunctionAST *func = mblock->get_func();
+    return func->get_var(var_name);
+}
+Value* EndFunctionAST::codegen(Main_block* mblock) {
+    std::cout << "changing function" << std::endl;
+    FunctionAST *func = mblock->get_func();
+    mblock->pop_block();
+    Builder.SetInsertPoint(mblock->get_block());
     return nullptr;
+}
+
+Value* CondAST::codegen(Main_block* mblock) {
+    std::cout << "Creating conditional block" << std::endl;
+    llvm::Function* func = mblock->get_func()->get_func();
+    llvm::BasicBlock* current_block = mblock->get_block();
+    llvm::BasicBlock* cond_true = BasicBlock::Create(getGlobalContext(), "cond_true", func);
+    llvm::BasicBlock* cond_false = BasicBlock::Create(getGlobalContext(), "cond_false", func);
+
+
+    Value* lhs = (this->lhs.back())->codegen(mblock);
+    Value* rhs = (this->rhs.back())->codegen(mblock);
+    Value* comp;
+
+    switch (this->operand.back()) {
+        case 0: //equal
+            comp = Builder.CreateICmpEQ(lhs, rhs, "tmp_eq");
+            break;
+        case 1: //not equal
+            comp = Builder.CreateICmpNE(lhs, rhs, "tmp_ne");
+            break;
+        case 2: //signed less than
+            comp = Builder.CreateICmpSLT(lhs, rhs, "tmp_slt");
+            break;
+        case 3: //signed less or equal
+            comp = Builder.CreateICmpSLE(lhs, rhs, "tmp_sle");
+            break;
+        case 4: //signed greater than
+            comp = Builder.CreateICmpSGT(lhs, rhs, "tmp_sgt");
+            break;
+        case 5: //signed greater or equal
+            comp = Builder.CreateICmpSGE(lhs, rhs, "tmp_sge");
+            break;
+
+    }
+    llvm::Value* cond = Builder.CreateCondBr(comp, cond_true, cond_false);
+    Builder.SetInsertPoint(cond_true);
+    for (auto it = get_true_statement().begin(); it != get_true_statement().end(); it++) {
+        (*it)->codegen(mblock);
+    }
+    Builder.SetInsertPoint(cond_false);
+    for (auto it = get_false_statement().begin(); it != get_false_statement().end(); it++) {
+        (*it)->codegen(mblock);
+    }
+    Builder.SetInsertPoint(current_block);
+
+    return nullptr;
+}
+
+void CondAST::add_condition(BasicAST* lhs, int operand, BasicAST* rhs) {
+    this->lhs.push_back(lhs);
+    this->rhs.push_back(rhs);
+    this->operand.push_back(operand);
 }

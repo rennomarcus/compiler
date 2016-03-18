@@ -562,7 +562,7 @@
 	"llvm/ADT/StringRef.h"
 	<string>
 
-1456799535 /home/marcus/workspace/compiler/my_compiler/scan.hpp
+1458244576 /home/marcus/workspace/compiler/my_compiler/scan.hpp
 	<iostream>
 	<fstream>
 	<string>
@@ -571,13 +571,13 @@
 1457284800 /home/marcus/workspace/compiler/my_compiler/global.hpp
 	"llvm/IR/IRBuilder.h"
 
-1457285600 source:/home/marcus/workspace/compiler/my_compiler/scan.cpp
+1458244530 source:/home/marcus/workspace/compiler/my_compiler/scan.cpp
 	"scan.hpp"
 
-1457309805 source:/home/marcus/workspace/compiler/my_compiler/ast.cpp
+1458266254 source:/home/marcus/workspace/compiler/my_compiler/ast.cpp
 	"ast.hpp"
 
-1457309436 /home/marcus/workspace/compiler/my_compiler/ast.hpp
+1458266271 /home/marcus/workspace/compiler/my_compiler/ast.hpp
 	"llvm/ADT/STLExtras.h"
 	"llvm/IR/IRBuilder.h"
 	"llvm/IR/LLVMContext.h"
@@ -590,10 +590,10 @@
 	"global.hpp"
 	"scan.hpp"
 
-1457307052 source:/home/marcus/workspace/compiler/my_compiler/parser.cpp
+1458266420 source:/home/marcus/workspace/compiler/my_compiler/parser.cpp
 	"parser.hpp"
 
-1457304278 /home/marcus/workspace/compiler/my_compiler/parser.hpp
+1458263881 /home/marcus/workspace/compiler/my_compiler/parser.hpp
 	"ast.hpp"
 	"scan.hpp"
 	"global.hpp"
@@ -605,10 +605,10 @@
 	"llvm/ADT/APInt.h"
 	"llvm/Support/DataTypes.h"
 
-1456689452 source:/home/marcus/workspace/compiler/my_compiler/global.cpp
+1458244615 source:/home/marcus/workspace/compiler/my_compiler/global.cpp
 	"global.hpp"
 
-1457296332 /home/marcus/workspace/compiler/my_compiler/shunting_yard.h
+1457631097 /home/marcus/workspace/compiler/my_compiler/shunting_yard.h
 	<string>
 	<vector>
 	<map>
@@ -617,6 +617,6 @@
 	"scan.hpp"
 	"ast.hpp"
 
-1457296559 source:/home/marcus/workspace/compiler/my_compiler/shunting_yard.cpp
+1458215032 source:/home/marcus/workspace/compiler/my_compiler/shunting_yard.cpp
 	"shunting_yard.h"
 

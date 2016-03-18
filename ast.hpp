@@ -25,7 +25,7 @@ class FloatAST : public BasicAST {
     float value;
 
     public:
-    void print() {}
+    void print() { std::cout << "(print)Float " << this->value << std::endl; }
     FloatAST(float v) : value(v) {}
     llvm::Value* codegen(Main_block*);
 };
@@ -34,7 +34,7 @@ class IntegerAST : public BasicAST {
     int value;
 
     public:
-    void print() { std::cout << this->value << std::endl; }
+    void print() { std::cout << "(print)Integer " << this->value << std::endl; }
     IntegerAST(int v) : value(v) {}
     llvm::Value* codegen(Main_block* mblock);
 };
@@ -52,7 +52,7 @@ class VariableAST : public BasicAST {
     int var_type;
     std::string name;
     public:
-    void print() {}
+    void print() { std::cout << "(print)Variable" << get_name() << std::endl; }
     std::string get_name() { return this->name; }
     VariableAST(std::string name, int var_type) : name(name), var_type(var_type) {}
     llvm::Value* codegen(Main_block*);
@@ -61,20 +61,24 @@ class VariableAST : public BasicAST {
 
 class AssignAST : public BasicAST {
     std::string var;
-    BasicAST* value;
+    std::vector<BasicAST*> rhs;
 
     public:
-    void print() {}
-    AssignAST(std::string var_name, BasicAST* value) : var(var_name), value(value) {}
+    void print() { std::cout << "(print)Assigning var: " << this->get_name() << std::endl; }
+    AssignAST(std::string var_name, std::vector<BasicAST*> rhs) : var(var_name), rhs(rhs) {}
     std::string get_name() { return this->var; }
     llvm::Value* codegen(Main_block*);
 };
 
+
+
 class CallVarAST : public BasicAST {
-    std::string name;
+    std::string var;
     public:
-    void print() { std::cout << this->name << std::endl; }
-    CallVarAST(std::string name) : name(name) {}
+    std::string get_var() { return this->var; }
+
+    void print() { std::cout << "(print)Calling var" << this->var<< std::endl; }
+    CallVarAST(std::string var_name) : var(var_name) {}
     llvm::Value* codegen(Main_block*);
 };
 
@@ -84,13 +88,57 @@ class BinopAST : public BasicAST {
     BasicAST* op2;
 
     public:
-    void print() { std::cout << "bin op" << std::endl; }
+    void print() { std::cout << "(print) bin op" << std::endl; }
     BinopAST(char op, BasicAST* op1, BasicAST* op2) : op(op),op1(op1),op2(op2) {}
     llvm::Value* codegen(Main_block*);
 };
 
+
+#define COND_EQUAL 0
+#define COND_NOT_EQUAL 1
+#define COND_LESS 2
+#define COND_LESS_EQUAL 3
+#define COND_GREATER 4
+#define COND_GREATER_EQUAL 5
+
+class CondAST : public BasicAST {
+    llvm::Function* func; //functio this condition belongs to
+
+    llvm::BasicBlock* cond_true; //block when the cond is true
+    llvm::BasicBlock* cond_false; //block when the cond is false
+
+    std::vector<BasicAST*> true_statements; //statements of the true cond block
+    std::vector<BasicAST*> false_statements; //statements of the false cond block
+
+    std::vector<BasicAST*> lhs; //condition lhs
+    std::vector<int> operand; //operand of condition
+    std::vector<BasicAST*> rhs; //condition rhs
+
+
+
+    public:
+    std::vector<BasicAST*> get_true_statement() { return this->true_statements; }
+    std::vector<BasicAST*> get_false_statement() { return this->false_statements; }
+
+    void print() { std::cout << "(print) if block" << std::endl; }
+    void add_condition(BasicAST* lhs, int operand, BasicAST* rhs);
+    void add_true_statement(BasicAST* stat) { this->true_statements.push_back(stat); }
+    void add_false_statement(BasicAST* stat) { this->false_statements.push_back(stat); }
+
+    CondAST() {};
+    llvm::Value* codegen(Main_block*);
+};
+
+class EndFunctionAST : public BasicAST {
+    public:
+    EndFunctionAST() { std::cout<< "(print) end function" << std::endl; }
+    void print() { }
+    llvm::Value* codegen(Main_block *);
+};
+
 class FunctionAST : public BasicAST {
-    llvm::FunctionType *func;
+    llvm::FunctionType* llvm_func_type;
+    llvm::Function* func;
 
     std::string name; //head
     int func_type; //head
@@ -101,15 +149,19 @@ class FunctionAST : public BasicAST {
 
     llvm::BasicBlock* bb;
     public:
-    void print() {}
+    void print() {  std::cout<< "(print) function " << get_name() << std::endl; }
     FunctionAST(std::string name) : name(name) {}
+
     void add_arg(std::string, llvm::Type*); //add argument to this function
     void add_var(VariableAST* var); //add var to local variables of this function
     void add_statement(BasicAST*);
-    void show_name() { std::cout << this->name << std::endl; }
+
+    std::string get_name() { return this->name; }
     std::vector<llvm::Type *> get_args_type();
     int change_var_value(std::string, llvm::Value*);
     llvm::Value* get_var(std::string var) { return this->local_var[var]; }
+    llvm::Function* get_func() { return this->func; }
+
     llvm::Value* codegen(Main_block *);
     void show_dump() { func->dump(); }
 };
@@ -136,7 +188,7 @@ class Main_block {
     void add_block(llvm::BasicBlock *bb) { block.push_back(bb); }
     void add_statement(BasicAST*);
     llvm::BasicBlock* get_block() { return this->block.back(); }
-    void drop_block() { block.pop_back(); }
+    void pop_block() { block.pop_back(); }
     FunctionAST* get_func() { return this->functions.back(); }
 };
 ///TODO

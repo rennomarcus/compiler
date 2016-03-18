@@ -55,13 +55,16 @@ using namespace std;
 #define T_OUT 274
 #define T_INOUT 275
 #define T_ASSIGN 276
+#define T_TRUE 277
+#define T_FALSE 278
 
 #define T_EOF 349 // code used when at end of file
 #define T_UNKNOWN 350 // token was unrecognized by scanner
 
 #define error 666
 
-#define MAX_RESERVED_KEYS 21
+#define MAX_RESERVED_KEYS 23
+
 
 
 class Scan_file {

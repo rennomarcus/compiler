@@ -1,8 +1,40 @@
 #include "shunting_yard.h"
 
+/*void Shunting::check_parenthesis(char op) {
+    if (op == T_RPAREN)
+        inc_parenthesis();
+    else if (op = T_LPAREN)
+        dec_parenthesis();
+}
+//do this until get_parenthesis is 0
+Shunting::pop_operator() {
+    while (get_parenthesis() > 0) {
+        char tok1 = operators.back();
+        operators.pop_back();
+        char tok2 = operators.back();
+        int current = BinopPrecedence[tok];
+        int scanned = BinopPrecedence[tok2];
+
+
+        if (scanned > current) {
+            this->operators.push_back(tok);
+        }
+        while (!this->operators.empty() && scanned <= current && get_parenthesis() > 0) {
+            token temp;
+            temp.token_type = this->operators.back();
+            this->operators.pop_back();
+            this->equation.push_back(temp);
+            if (!this->operators.empty()) {
+                current = BinopPrecedence[this->operators.back()];
+            }
+        }
+        this->operators.push_back(tok);
+    }
+}*/
 
 Shunting::Shunting(Scan_file *scan) {
     int tok;
+    set_parenthesis(0);
     while ((tok = scan->scan_tok()) != T_SEMICOLON) {
         int tok = scan->get_tok();
         token t;
@@ -15,12 +47,13 @@ Shunting::Shunting(Scan_file *scan) {
         else {
             //If the incoming symbol is a left parenthesis, push it on the stack.
             if (tok == T_LPAREN) {
-                this->equation.push_back(t);
+                this->operators.push_back(tok);
             }
             //If the incoming symbol is a right parenthesis:
             //discard the right parenthesis, pop and print the stack symbols until you see a left parenthesis.
             //Pop the left parenthesis and discard it.
             else if (tok == T_RPAREN) {
+                inc_parenthesis();
             }
             else if (this->operators.empty()) {
                 //If the incoming symbol is an operator and the stack is empty or contains a left parenthesis on top, push the incoming operator onto the stack.
@@ -78,48 +111,33 @@ void Shunting::print() {
     std::cout << std::endl;
 }
 
-BasicAST* Shunting::read() {
+std::vector<BasicAST*> Shunting::read() {
     std::vector<BasicAST*> eq;
     token t;
     BasicAST* temp;
-    if (equation.size() > 1) {
-        for (auto it = equation.begin(); it != equation.end(); it++) {
-            t = *it;
-            if (t.token_type == T_INTEGER) {
-                temp = new IntegerAST(std::stoi(t.value));
-                eq.push_back(temp);
-            }
-            else if (t.token_type == T_IDENTIFIER) {
-                temp = new CallVarAST(t.value);
-                eq.push_back(temp);
-            }
-            else if (t.token_type == T_FLOAT) {
-                temp = new FloatAST(std::stoi(t.value));
-                eq.push_back(temp);
-            }
-            else {
-                BasicAST *op1 = eq.back();
-                eq.pop_back();
-                BasicAST *op2 = eq.back();
-                eq.pop_back();
-                std::cout << "#create bin op" << (char)t.token_type << std::endl;
-                temp = new BinopAST((char)t.token_type, op1,op2);
-                eq.push_back(temp);
-            }
-        }
-        return eq.back();
-    }
-    else {
-        t = equation.back();
+    for (auto it = equation.begin(); it != equation.end(); it++) {
+        t = *it;
         if (t.token_type == T_INTEGER) {
             temp = new IntegerAST(std::stoi(t.value));
+            eq.push_back(temp);
         }
         else if (t.token_type == T_IDENTIFIER) {
             temp = new CallVarAST(t.value);
+            eq.push_back(temp);
         }
         else if (t.token_type == T_FLOAT) {
             temp = new FloatAST(std::stoi(t.value));
+            eq.push_back(temp);
         }
-        return temp;
+        else {
+            BasicAST *op1 = eq.back();
+            eq.pop_back();
+            BasicAST *op2 = eq.back();
+            eq.pop_back();
+            std::cout << "#create bin op" << (char)t.token_type << std::endl;
+            temp = new BinopAST((char)t.token_type, op1,op2);
+            eq.push_back(temp);
+        }
     }
+    return eq;
 }

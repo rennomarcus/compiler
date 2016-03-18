@@ -4,7 +4,7 @@
 using namespace llvm;
 
 //return the type of the variable for allocation and arguments of functions
-Type *typeOf(int type) {
+Type* typeOf(int type) {
     if (type == T_INTEGER) {
         return Type::getInt32Ty(getGlobalContext());
     }
@@ -15,7 +15,7 @@ Type *typeOf(int type) {
 }
 
 //top level parser
-llvm::Value* parser(Scan_file *scan, Main_block *mblock) {
+void parser(Scan_file* scan, Main_block* mblock) {
 
     switch (scan->get_tok()) {
         //case T_EOF:
@@ -28,17 +28,120 @@ llvm::Value* parser(Scan_file *scan, Main_block *mblock) {
             break;
         case T_PROCEDURE:
             HandleFunction(scan, mblock);
+        case T_END:
+            //pop block and set BB
+            HandleEndFunction(scan, mblock);
+            break;
+        case T_IF:
+            HandleIfBlock(scan, mblock);
+        case T_ELSE:
+            HandleIfBlock(scan, mblock);
+            break;
         default:
             HandleTopLevelExpression(scan, mblock);
             break;
 
     }
-    llvm::Value* test;
-    return test;
+
+}
+
+//check (if, then, else) blocks
+void HandleIfBlock(Scan_file* scan, Main_block* mblock) {
+    CondAST* cond;
+    while (scan->scan_tok() != T_END) {
+        std::cout << "If block" << std::endl;
+        if (scan->get_tok() == T_LPAREN) {
+            cond = HandleIfCond(scan, mblock);
+        }
+
+    }
+    if (scan->scan_tok() == T_IF) {
+        if (scan->scan_tok() == T_SEMICOLON) {
+            mblock->add_statement(cond);
+            std::cout << "Leaving if block" << std::endl;
+        }
+        else {
+            Error("Missing ; after end if statement");
+        }
+    }
+
+}
+
+//create condition
+CondAST* HandleIfCond(Scan_file* scan, Main_block* mblock) {
+    int tok1 = scan->scan_tok();
+    std::string value = scan->get_value();
+    CondAST* cond = new CondAST();
+    if (scan->scan_tok() == T_RPAREN) {
+        if (tok1 == T_TRUE) {
+            //create cond to compareto not 0
+            IntegerAST* lhs = new IntegerAST(1);
+            IntegerAST* rhs = new IntegerAST(1);
+            cond->add_condition(lhs, COND_EQUAL,rhs);
+            std::cout << "UHU " << value << std::endl;
+        }
+        else {
+            Error("Invalid condition");
+        }
+    }
+    else {
+        BasicAST* lhs = convert_tok_ast(tok1, value);
+        int operand = HandleIfOperator(scan, mblock);
+        BasicAST* rhs = convert_tok_ast(scan->get_tok(), scan->get_value());
+        cond->add_condition(lhs, operand, rhs);
+    }
+
+    return cond;
+
+}
+
+BasicAST* convert_tok_ast(int tok_type, std::string tok_value) {
+    BasicAST* ast;
+    switch (tok_type) {
+        case T_INTEGER:
+            ast = new IntegerAST(stoi(tok_value));
+            break;
+        case T_FLOAT:
+            ast = new FloatAST(stof(tok_value));
+            break;
+
+        default:
+            ast = new CallVarAST(tok_value);
+    }
+    return ast;
+}
+int HandleIfOperator(Scan_file* scan, Main_block* mblock){
+    int tok = scan->get_tok();
+    switch (tok) {
+        case '=':
+            if (scan->scan_tok() != '=')
+                Error("Invalid operator in if statement");
+            scan->scan_tok();
+            return COND_EQUAL;
+        case '!':
+            if (scan->scan_tok() != '=')
+                Error("Invalid operator in if statement");
+            scan->scan_tok();
+            return COND_NOT_EQUAL;
+        case '<':
+            if (scan->scan_tok() == '=') {
+                scan->scan_tok();
+                return COND_LESS_EQUAL;
+            }
+            return COND_LESS;
+        case '>':
+            if (scan->scan_tok() == '=') {
+                scan->scan_tok();
+                return COND_GREATER_EQUAL;
+            }
+            return COND_GREATER;
+        default:
+            Error("Invalid operator in if statement");
+    }
 }
 
 //check assigning and call functions. then it will add to current function
-void HandleTopLevelExpression(Scan_file *scan, Main_block *mblock) {
+void HandleTopLevelExpression(Scan_file* scan, Main_block* mblock) {
     std::cout << "top level " << scan->get_tok() << std::endl;
     switch(scan->get_tok()) {
         case T_BEGIN:
@@ -52,13 +155,13 @@ void HandleTopLevelExpression(Scan_file *scan, Main_block *mblock) {
 }
 
 //3 + 4 * 10
-BasicAST* HandleMath(Scan_file *scan, Main_block *mblock) {
-    Shunting *equation = new Shunting(scan);
+std::vector<BasicAST*> HandleMath(Scan_file* scan, Main_block* mblock) {
+    Shunting* equation = new Shunting(scan);
     equation->print();
     return equation->read();
 }
 
-void HandleStatement(Scan_file *scan, Main_block *mblock) {
+void HandleStatement(Scan_file* scan, Main_block* mblock) {
     std::cout << "handle expr " << std::endl;
 
     if (scan->get_tok() == T_IDENTIFIER) {
@@ -101,6 +204,8 @@ void HandleFunction(Scan_file *scan, Main_block *mblock) {
     if (state == 2) {
         state--;
         std::cout << "leaving function\n";
+        EndFunctionAST* endfunc = new EndFunctionAST();
+        mblock->add_statement(endfunc);
     }
     else {
         state++;
@@ -129,7 +234,9 @@ void HandleFunction(Scan_file *scan, Main_block *mblock) {
     }
 }
 
+void HandleEndFunction(Scan_file *scan, Main_block *mblock) {
 
+}
 //handles variable allocation and variable arguments of function head
 VariableAST* HandleVariableDeclaration(Scan_file *scan, Main_block *mblock) {
     std::cout << "Create var ";
