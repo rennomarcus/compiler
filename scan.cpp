@@ -42,6 +42,11 @@ int Scan_file::scan_tok() {
             }
         }
 
+        if (ch == '.') {
+            this->token = T_PERIOD;
+            return T_PERIOD;
+        }
+
         if (isalpha(ch)) { // identifier: [a-zA-Z][a-zA-Z0-9]*
             IdentifierStr = ch;
 

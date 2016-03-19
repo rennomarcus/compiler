@@ -32,6 +32,15 @@ void Main_block::add_arg(std::string name, llvm::Type* var_type) {
     FunctionAST *func = this->functions.back();
     func->add_arg(name, var_type);
 }
+void Main_block::add_special(FlowBlock* special, int type) {
+    FunctionAST *func = this->functions.back();
+    func->add_special(special, type);
+}
+void Main_block::pop_special() {
+    FunctionAST *func = this->functions.back();
+    func->pop_special();
+}
+
 
 void Main_block::codegen() {
     this->mod = llvm::make_unique<Module>(this->name, getGlobalContext());
@@ -85,7 +94,22 @@ void FunctionAST::add_var(VariableAST* var) {
     }
 }
 void FunctionAST::add_statement(BasicAST* stat) {
-    this->list_statement.push_back(stat);
+    if (get_state() == 0)
+        this->list_statement.push_back(stat);
+    else {
+        this->sblocks->add_statement(stat);
+    }
+}
+void FunctionAST::add_special(FlowBlock* special, int type) {
+    std::cout << "Creating one block" << std::endl;
+    sblocks->add_block(special, type);
+    inc_state();
+}
+void FunctionAST::pop_special() {
+    std::cout << "Leaving one block" << std::endl;
+    dec_state();
+    FlowBlock* sb = sblocks->pop_block();
+    add_statement(sb);
 }
 
 std::vector<Type *> FunctionAST::get_args_type() {
@@ -97,6 +121,37 @@ std::vector<Type *> FunctionAST::get_args_type() {
         types.push_back(p.second);
     }
     return types;
+}
+void SpecialBlock::add_block(FlowBlock* special, int type) {
+    FlowBlock* sb;
+    if (type == 1) {
+        sb = special;
+        sb->set_type(1);
+    }
+    this->blocks.push_back(sb);
+}
+FlowBlock* SpecialBlock::get_block() {
+    return this->blocks.back();
+}
+ FlowBlock* SpecialBlock::pop_block() {
+    FlowBlock* sb = this->blocks.back();
+    this->blocks.pop_back();
+    return sb;
+}
+void SpecialBlock::add_statement(BasicAST* stat) {
+    FlowBlock* sb = get_block();
+    sb->add_statement(stat);
+}
+
+void CondAST::add_statement(BasicAST* stat) {
+    int state = get_state();
+    std::cout << "Adding something in condition!" << std::endl;
+    stat->print();
+    if (!state) {
+        this->true_statements.push_back(stat);
+    } else {
+        this->false_statements.push_back(stat);
+    }
 }
 
 llvm::Value* FunctionAST::codegen(Main_block *mblock) {
@@ -149,9 +204,9 @@ Value* VariableAST::codegen(Main_block* mblock) {
 }
 
 Value* AssignAST::codegen(Main_block* mblock) {
-    StoreInst* test;
-    FunctionAST *func = mblock->get_func();
     std::cout << "Assigning var: " << get_name() << std::endl;
+    FunctionAST *func = mblock->get_func();
+
 
     llvm::Value* lhs = func->get_var(get_name());
     std::vector<BasicAST*> rhs = this->rhs;
@@ -164,6 +219,7 @@ Value* AssignAST::codegen(Main_block* mblock) {
     std::cout << "*assigning " << this->get_name() << std::endl;
     if (lhs) {
         return new StoreInst(code, lhs, false, mblock->get_block());
+        //lhs = code;
     }
 
     return nullptr;
@@ -220,7 +276,6 @@ Value* CondAST::codegen(Main_block* mblock) {
     llvm::BasicBlock* cond_true = BasicBlock::Create(getGlobalContext(), "cond_true", func);
     llvm::BasicBlock* cond_false = BasicBlock::Create(getGlobalContext(), "cond_false", func);
 
-
     Value* lhs = (this->lhs.back())->codegen(mblock);
     Value* rhs = (this->rhs.back())->codegen(mblock);
     Value* comp;
@@ -246,16 +301,28 @@ Value* CondAST::codegen(Main_block* mblock) {
             break;
 
     }
+
     llvm::Value* cond = Builder.CreateCondBr(comp, cond_true, cond_false);
+
     Builder.SetInsertPoint(cond_true);
-    for (auto it = get_true_statement().begin(); it != get_true_statement().end(); it++) {
+    mblock->add_block(cond_true);
+    std::vector<BasicAST*> tmp = get_true_statement();
+    for (auto it = tmp.begin(); it != tmp.end(); it++) {
         (*it)->codegen(mblock);
     }
+    mblock->pop_block();
+
     Builder.SetInsertPoint(cond_false);
-    for (auto it = get_false_statement().begin(); it != get_false_statement().end(); it++) {
+    mblock->add_block(cond_false);
+    tmp = get_false_statement();
+    for (auto it = tmp.begin(); it != tmp.end(); it++) {
         (*it)->codegen(mblock);
     }
+    mblock->pop_block();
+
     Builder.SetInsertPoint(current_block);
+
+    std::cout << "Leaving conditional block" << std::endl;
 
     return nullptr;
 }

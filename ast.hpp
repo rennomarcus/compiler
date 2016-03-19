@@ -101,8 +101,17 @@ class BinopAST : public BasicAST {
 #define COND_GREATER 4
 #define COND_GREATER_EQUAL 5
 
-class CondAST : public BasicAST {
+class FlowBlock : public BasicAST {
+    int type;
+    public:
+    void set_type(int t) { this->type = t; }
+    int get_type() { return this->type; }
+    virtual void add_statement(BasicAST*)=0;
+};
+
+class CondAST : public FlowBlock {
     llvm::Function* func; //functio this condition belongs to
+    int state; //shows if cond is true or in false state
 
     llvm::BasicBlock* cond_true; //block when the cond is true
     llvm::BasicBlock* cond_false; //block when the cond is false
@@ -119,13 +128,15 @@ class CondAST : public BasicAST {
     public:
     std::vector<BasicAST*> get_true_statement() { return this->true_statements; }
     std::vector<BasicAST*> get_false_statement() { return this->false_statements; }
+    void set_state(int s) { this->state = s; }
 
     void print() { std::cout << "(print) if block" << std::endl; }
     void add_condition(BasicAST* lhs, int operand, BasicAST* rhs);
-    void add_true_statement(BasicAST* stat) { this->true_statements.push_back(stat); }
-    void add_false_statement(BasicAST* stat) { this->false_statements.push_back(stat); }
+    void add_statement(BasicAST*);
 
-    CondAST() {};
+    int get_state() { return this->state; }
+
+    CondAST() { set_state(0); };
     llvm::Value* codegen(Main_block*);
 };
 
@@ -136,35 +147,53 @@ class EndFunctionAST : public BasicAST {
     llvm::Value* codegen(Main_block *);
 };
 
+class SpecialBlock {
+    std::vector<FlowBlock*> blocks;
+
+    FlowBlock* get_block();
+    public:
+    void add_statement(BasicAST*);
+    void add_block(FlowBlock*, int);
+
+    FlowBlock* pop_block();
+};
 class FunctionAST : public BasicAST {
     llvm::FunctionType* llvm_func_type;
     llvm::Function* func;
+    int state; //show if there is an if or a loop (1 == if, 2 == loop)
 
     std::string name; //head
     int func_type; //head
     std::map<std::string, llvm::Type*> args; //head
 
     std::vector<BasicAST*> list_statement; //body
+    SpecialBlock* sblocks; //body
     std::map<std::string, llvm::Value*> local_var; //body
 
     llvm::BasicBlock* bb;
     public:
     void print() {  std::cout<< "(print) function " << get_name() << std::endl; }
-    FunctionAST(std::string name) : name(name) {}
+    FunctionAST(std::string name) : name(name) { this->state = 0; this->sblocks = new SpecialBlock; }
 
     void add_arg(std::string, llvm::Type*); //add argument to this function
     void add_var(VariableAST* var); //add var to local variables of this function
     void add_statement(BasicAST*);
+    void add_special(FlowBlock*, int);
+    void pop_special();
+
+    void inc_state() { this->state = this->state + 1; }
+    void dec_state() { this->state = this->state - 1; }
 
     std::string get_name() { return this->name; }
     std::vector<llvm::Type *> get_args_type();
     int change_var_value(std::string, llvm::Value*);
     llvm::Value* get_var(std::string var) { return this->local_var[var]; }
     llvm::Function* get_func() { return this->func; }
-
+    int get_state() { return this->state; }
     llvm::Value* codegen(Main_block *);
     void show_dump() { func->dump(); }
 };
+
 
 
 class Main_block {
@@ -187,6 +216,9 @@ class Main_block {
     void add_arg(std::string, llvm::Type*);
     void add_block(llvm::BasicBlock *bb) { block.push_back(bb); }
     void add_statement(BasicAST*);
+    void add_special(FlowBlock*, int);
+    void pop_special();
+
     llvm::BasicBlock* get_block() { return this->block.back(); }
     void pop_block() { block.pop_back(); }
     FunctionAST* get_func() { return this->functions.back(); }

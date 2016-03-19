@@ -6,9 +6,9 @@ program test_program is
         b := 3+2*6+10;
         y := 10;
         if (b == 25) then
-            m := "marcus";
+            b := 40;
         else
-            m := "vinicius";
+            b := 50;
         end if;
     end procedure;
 begin

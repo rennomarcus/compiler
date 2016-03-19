@@ -28,14 +28,16 @@ void parser(Scan_file* scan, Main_block* mblock) {
             break;
         case T_PROCEDURE:
             HandleFunction(scan, mblock);
+            break;
         case T_END:
             //pop block and set BB
-            HandleEndFunction(scan, mblock);
+            HandleEnd(scan, mblock);
             break;
         case T_IF:
             HandleIfBlock(scan, mblock);
+            break;
         case T_ELSE:
-            HandleIfBlock(scan, mblock);
+            HandleElseBlock(scan, mblock);
             break;
         default:
             HandleTopLevelExpression(scan, mblock);
@@ -48,23 +50,17 @@ void parser(Scan_file* scan, Main_block* mblock) {
 //check (if, then, else) blocks
 void HandleIfBlock(Scan_file* scan, Main_block* mblock) {
     CondAST* cond;
-    while (scan->scan_tok() != T_END) {
-        std::cout << "If block" << std::endl;
+    std::cout << "If block" << std::endl;
+    if (scan->get_tok() == T_IF) {
+        scan->scan_tok();
         if (scan->get_tok() == T_LPAREN) {
             cond = HandleIfCond(scan, mblock);
-        }
-
-    }
-    if (scan->scan_tok() == T_IF) {
-        if (scan->scan_tok() == T_SEMICOLON) {
-            mblock->add_statement(cond);
-            std::cout << "Leaving if block" << std::endl;
-        }
-        else {
-            Error("Missing ; after end if statement");
+            mblock->add_special(cond, 1);
         }
     }
-
+}
+void HandleElseBlock(Scan_file* scan, Main_block* mblock) {
+    //scan->scan_tok();
 }
 
 //create condition
@@ -85,10 +81,14 @@ CondAST* HandleIfCond(Scan_file* scan, Main_block* mblock) {
         }
     }
     else {
-        BasicAST* lhs = convert_tok_ast(tok1, value);
-        int operand = HandleIfOperator(scan, mblock);
-        BasicAST* rhs = convert_tok_ast(scan->get_tok(), scan->get_value());
-        cond->add_condition(lhs, operand, rhs);
+        while (scan->get_tok() != T_RPAREN) {
+            BasicAST* lhs = convert_tok_ast(tok1, value);
+            int operand = HandleIfOperator(scan, mblock);
+            BasicAST* rhs = convert_tok_ast(scan->get_tok(), scan->get_value());
+            cond->add_condition(lhs, operand, rhs);
+            scan->scan_tok();
+        }
+        scan->scan_tok();
     }
 
     return cond;
@@ -234,8 +234,31 @@ void HandleFunction(Scan_file *scan, Main_block *mblock) {
     }
 }
 
-void HandleEndFunction(Scan_file *scan, Main_block *mblock) {
-
+void HandleEnd(Scan_file *scan, Main_block *mblock) {
+    if (scan->scan_tok() == T_IF) {
+        if (scan->scan_tok() == T_SEMICOLON) {
+            //mblock->add_statement(cond);
+            mblock->pop_special();
+            std::cout << "Leaving if block" << std::endl;
+        }
+        else {
+            Error("Missing ; after end if statement");
+        }
+    }
+    else if (scan->get_tok() == T_PROCEDURE) {
+        if (scan->scan_tok() != T_SEMICOLON) {
+            Error("Missing ; after end procedure statement");
+        }
+        HandleFunction(scan,mblock);
+        std::cout << "Leaving procedure block" << std::endl;
+    }
+    else if (scan->get_tok() == T_PROGRAM) {
+        if (scan->scan_tok() != T_PERIOD) {
+            std::cout << "PERIOD" << scan->get_tok();
+            Error("Missing . after end program statement");
+        }
+        std::cout << "Program finished" << std::endl;
+    }
 }
 //handles variable allocation and variable arguments of function head
 VariableAST* HandleVariableDeclaration(Scan_file *scan, Main_block *mblock) {

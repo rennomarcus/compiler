@@ -14,7 +14,7 @@ using namespace std;
 #define T_RPAREN ')'
 #define T_LBRACKET '['
 #define T_RBRACKET ']'
-
+#define T_PERIOD '.'
 //comparison
 #define T_EQUALS 267
 

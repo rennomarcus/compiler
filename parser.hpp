@@ -10,12 +10,13 @@
 
 void HandleProgram(Scan_file *, Main_block *);
 void HandleFunction(Scan_file *, Main_block *);
-void HandleEndFunction(Scan_file *, Main_block*);
+void HandleEnd(Scan_file *, Main_block*);
 void HandleTopLevelExpression(Scan_file*, Main_block*);
 void HandleStatement(Scan_file*, Main_block*);
 void HandleIfBlock(Scan_file*, Main_block*);
 CondAST* HandleIfCond(Scan_file*, Main_block*);
 int HandleIfOperator(Scan_file*, Main_block*);
+void HandleElseBlock(Scan_file*, Main_block*);
 VariableAST* HandleVariableDeclaration(Scan_file *, Main_block *);
 void parser(Scan_file *, Main_block *);
 
