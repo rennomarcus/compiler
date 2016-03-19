@@ -40,6 +40,10 @@ void Main_block::pop_special() {
     FunctionAST *func = this->functions.back();
     func->pop_special();
 }
+void Main_block::change_state() {
+    FunctionAST *func = this->functions.back();
+    func->change_state();
+}
 
 
 void Main_block::codegen() {
@@ -112,6 +116,7 @@ void FunctionAST::pop_special() {
     add_statement(sb);
 }
 
+
 std::vector<Type *> FunctionAST::get_args_type() {
     std::vector<Type *> types;
     std::map<std::string, llvm::Type*>::iterator it;
@@ -133,10 +138,14 @@ void SpecialBlock::add_block(FlowBlock* special, int type) {
 FlowBlock* SpecialBlock::get_block() {
     return this->blocks.back();
 }
- FlowBlock* SpecialBlock::pop_block() {
+FlowBlock* SpecialBlock::pop_block() {
     FlowBlock* sb = this->blocks.back();
     this->blocks.pop_back();
     return sb;
+}
+void SpecialBlock::change_state() {
+    FlowBlock* sb = this->blocks.back();
+    sb->change_state();
 }
 void SpecialBlock::add_statement(BasicAST* stat) {
     FlowBlock* sb = get_block();

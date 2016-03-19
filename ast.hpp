@@ -107,6 +107,8 @@ class FlowBlock : public BasicAST {
     void set_type(int t) { this->type = t; }
     int get_type() { return this->type; }
     virtual void add_statement(BasicAST*)=0;
+
+    virtual void change_state()=0; //used in the control flow to go to the else state
 };
 
 class CondAST : public FlowBlock {
@@ -133,7 +135,7 @@ class CondAST : public FlowBlock {
     void print() { std::cout << "(print) if block" << std::endl; }
     void add_condition(BasicAST* lhs, int operand, BasicAST* rhs);
     void add_statement(BasicAST*);
-
+    void change_state() { state++; }
     int get_state() { return this->state; }
 
     CondAST() { set_state(0); };
@@ -154,7 +156,7 @@ class SpecialBlock {
     public:
     void add_statement(BasicAST*);
     void add_block(FlowBlock*, int);
-
+    void change_state();
     FlowBlock* pop_block();
 };
 class FunctionAST : public BasicAST {
@@ -184,9 +186,11 @@ class FunctionAST : public BasicAST {
     void inc_state() { this->state = this->state + 1; }
     void dec_state() { this->state = this->state - 1; }
 
+    int change_var_value(std::string, llvm::Value*);
+    void change_state() { sblocks->change_state(); };
+
     std::string get_name() { return this->name; }
     std::vector<llvm::Type *> get_args_type();
-    int change_var_value(std::string, llvm::Value*);
     llvm::Value* get_var(std::string var) { return this->local_var[var]; }
     llvm::Function* get_func() { return this->func; }
     int get_state() { return this->state; }
@@ -215,12 +219,15 @@ class Main_block {
     void add_func(FunctionAST* func) { functions.push_back(func); }; //add new function to main block
     void add_arg(std::string, llvm::Type*);
     void add_block(llvm::BasicBlock *bb) { block.push_back(bb); }
-    void add_statement(BasicAST*);
-    void add_special(FlowBlock*, int);
-    void pop_special();
+    void add_statement(BasicAST*); //add a statement to the current block
+    void add_special(FlowBlock*, int); //add a special block
+
+    void pop_special(); //pop the last special block in the current function
+    void pop_block() { block.pop_back(); }
+
+    void change_state(); //used in the control flow
 
     llvm::BasicBlock* get_block() { return this->block.back(); }
-    void pop_block() { block.pop_back(); }
     FunctionAST* get_func() { return this->functions.back(); }
 };
 ///TODO

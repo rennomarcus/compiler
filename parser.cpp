@@ -60,7 +60,7 @@ void HandleIfBlock(Scan_file* scan, Main_block* mblock) {
     }
 }
 void HandleElseBlock(Scan_file* scan, Main_block* mblock) {
-    //scan->scan_tok();
+    mblock->change_state();
 }
 
 //create condition
