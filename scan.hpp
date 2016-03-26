@@ -58,12 +58,18 @@ using namespace std;
 #define T_TRUE 277
 #define T_FALSE 278
 
+#define F_PUTBOOL 279
+#define F_PUTINTEGER 280
+#define F_PUTFLOAT 281
+#define F_PUTSTRING 282
+#define F_PUTCHAR 283
+
 #define T_EOF 349 // code used when at end of file
 #define T_UNKNOWN 350 // token was unrecognized by scanner
 
 #define error 666
 
-#define MAX_RESERVED_KEYS 23
+#define MAX_RESERVED_KEYS 28
 
 
 
@@ -78,7 +84,7 @@ class Scan_file {
     int lookup(std::string);
     void create_table();
     void insert_reserved(char *,int);
-
+    char remove_comment(char ch);
 
     public:
     Scan_file(std::string name);

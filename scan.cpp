@@ -19,7 +19,42 @@ int Scan_file::get_tok() {
 std::string Scan_file::get_value() {
     return this->value;
 }
-
+char Scan_file::remove_comment(char ch) {
+    if (ch == '/') {
+        (*myfile).get(ch);
+        if (ch == '/') {
+            while (ch != '\n') {
+                (*myfile).get(ch);
+                if (myfile->eof()) {
+                    return '\0';
+                }
+            }
+        }
+        if (ch == '*') {
+            bool leave = false;
+            while (!leave) {
+                (*myfile).get(ch);
+                while (ch != '*') {
+                    (*myfile).get(ch);
+                    if (myfile->eof()) {
+                        return '\0';
+                    }
+                }
+                (*myfile).get(ch);
+                if (ch == '/')
+                    leave = true;
+                if (myfile->eof()) {
+                    return '\0';
+                }
+            }
+            (*myfile).get(ch);
+        }
+    }
+    while (isspace(ch)) {
+        (*myfile).get(ch);
+    }
+    return ch;
+}
 int Scan_file::scan_tok() {
     char ch;
     std::string IdentifierStr;
@@ -29,6 +64,7 @@ int Scan_file::scan_tok() {
 
         this->token = T_UNKNOWN;
         (*myfile).get(ch);
+
 
         if (myfile->eof()) {
             this->token = T_EOF;
@@ -41,11 +77,17 @@ int Scan_file::scan_tok() {
                 return T_EOF;
             }
         }
-
+        ch = remove_comment(ch);
+        if (ch == '\0') {
+            this->token = T_EOF;
+            return T_EOF;
+        }
         if (ch == '.') {
             this->token = T_PERIOD;
             return T_PERIOD;
         }
+
+
 
         if (isalpha(ch)) { // identifier: [a-zA-Z][a-zA-Z0-9]*
             IdentifierStr = ch;
@@ -139,6 +181,11 @@ void Scan_file::create_table() {
     insert_reserved("inout", TABLE_VALUE(T_INOUT));
     insert_reserved("true", TABLE_VALUE(T_TRUE));
     insert_reserved("false", TABLE_VALUE(T_FALSE));
+
+    insert_reserved("putbool", TABLE_VALUE(F_PUTBOOL));
+    insert_reserved("putinteger", TABLE_VALUE(F_PUTINTEGER));
+    insert_reserved("putstring", TABLE_VALUE(F_PUTSTRING));
+    insert_reserved("putchar", TABLE_VALUE(F_PUTCHAR));
 
 }
 
