@@ -147,6 +147,14 @@ void Structure::codegen(Main_block* mblock) {
         }
     }
 }
+/*    StructType *StructTy_struct_test = mod->getTypeByName("struct.test");
+    if (!StructTy_struct_test) {
+    StructTy_struct_test = StructType::create(mod->getContext(), "struct.test");
+    }
+    std::vector<Type*>StructTy_struct_test_fields;
+    StructTy_struct_test_fields.push_back(IntegerType::get(mod->getContext(), 32));
+    StructTy_struct_test_fields.push_back(IntegerType::get(mod->getContext(), 32));
+    StructTy_struct_test->setBody(StructTy_struct_test_fields, false);*/
 
 void FunctionAST::add_arg(std::string var, llvm::Type* var_type) {
     if (this->args[var]) {

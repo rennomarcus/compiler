@@ -6,7 +6,7 @@ using namespace llvm;
 //return the type of the variable for allocation and arguments of functions
 Type* typeOf(int type) {
     if (type == T_INTEGER) {
-        return Type::getInt32Ty(getGlobalContext());
+        return Type::getInt32PtrTy(getGlobalContext());
     }
     if (type == T_FLOAT) {
         return Type::getFloatTy(getGlobalContext());
@@ -74,7 +74,6 @@ CondAST* HandleIfCond(Scan_file* scan, Main_block* mblock) {
             IntegerAST* lhs = new IntegerAST(1);
             IntegerAST* rhs = new IntegerAST(1);
             cond->add_condition(lhs, COND_EQUAL,rhs);
-            std::cout << "UHU " << value << std::endl;
         }
         else {
             Error("Invalid condition");
@@ -151,6 +150,8 @@ void HandleTopLevelExpression(Scan_file* scan, Main_block* mblock) {
             //IDENT LEFT_PARENT... | call function
             HandleStatement(scan, mblock);
             break;
+        default:
+            ExternalFunctions(scan, mblock);
     }
 }
 
@@ -163,12 +164,12 @@ std::vector<BasicAST*> HandleMath(Scan_file* scan, Main_block* mblock) {
 
 void HandleStatement(Scan_file* scan, Main_block* mblock) {
     std::cout << "handle expr " << std::endl;
-
     if (scan->get_tok() == T_IDENTIFIER) {
         std::string name = scan->get_value();
         if (scan->scan_tok() == T_LPAREN) {
             //handle call function;
             std::cout << "#call function" << std::endl;
+
             while (scan->scan_tok() != T_RPAREN)
                 ;
         }
@@ -181,7 +182,18 @@ void HandleStatement(Scan_file* scan, Main_block* mblock) {
     }
 }
 
+void ExternalFunctions(Scan_file* scan, Main_block* mblock) {
+    CallFuncAST* func = new CallFuncAST;
 
+    switch (scan->get_tok()) {
+        case F_PUTBOOL: case F_PUTCHAR: case F_PUTINTEGER: case F_PUTSTRING:
+            printf("############## CALLING EXTERNAL\n");
+            func->set_external();
+            func->set_name("printf");
+
+            mblock->add_statement(func);
+    }
+}
 
 //handle beginning and closing program
 void HandleProgram(Scan_file *scan, Main_block *mblock) {
@@ -193,7 +205,7 @@ void HandleProgram(Scan_file *scan, Main_block *mblock) {
     else if (state == 0) {
         std::cout << "Create main func\n";
         state++;
-        FunctionAST *main = new FunctionAST(name);
+        FunctionAST *main = new FunctionAST("main");
         mblock->add_func(main);
     }
 }
@@ -206,6 +218,7 @@ void HandleFunction(Scan_file *scan, Main_block *mblock) {
         std::cout << "leaving function\n";
         EndFunctionAST* endfunc = new EndFunctionAST();
         mblock->add_statement(endfunc);
+        mblock->inc_structure();
     }
     else {
         state++;
@@ -280,11 +293,15 @@ VariableAST* HandleVariableDeclaration(Scan_file *scan, Main_block *mblock) {
     //otherwise,  it is an argument of a function. add as an argument to the function
     if (scan->get_tok() == T_IN || scan->get_tok() == T_OUT || scan->get_tok() == T_INOUT) {
         //add as arg to back block in mblock
-        if (scan->get_tok() == T_IN)
+        if (scan->get_tok() == T_IN) {
             mblock->add_arg(var_name, typeOf(type));
+        }
 
-        if (scan->get_tok() == T_OUT)
-            ;///TODO create return type
+        if (scan->get_tok() == T_OUT) {
+            mblock->add_var(var);
+            mblock->add_structure(var_name, typeOf(type));
+        }
+
 
         scan->scan_tok();
 

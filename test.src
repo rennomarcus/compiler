@@ -1,3 +1,5 @@
+/* husuau dadsa */
+
 program test_program is
     integer a;
     procedure f (integer x in, integer y out)
@@ -5,12 +7,20 @@ program test_program is
     begin
         b := 3+2*6+10;
         y := 10;
+        x := 15;
         if (b == 25) then
             b := 40;
         else
             b := 50;
         end if;
     end procedure;
+
+    procedure another (integer x2 out, integer yx out)
+    begin
+        x2 := 20;
+        yx := 30;
+    end procedure;
+
 begin
     a := 5;
     f(6, a);

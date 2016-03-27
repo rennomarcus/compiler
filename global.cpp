@@ -5,3 +5,5 @@ void Error(const char *Str) {
   fprintf(stderr, "Error: %s\n", Str);
   exit(-1);
 }
+
+int g_structure = 0;

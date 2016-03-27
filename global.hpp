@@ -6,6 +6,7 @@
 
 extern int g_line;
 extern int state;
+extern int g_structure;
 //extern std::unique_ptr<llvm::Module> TheModule;
 extern llvm::IRBuilder<> Builder;
 extern std::map<char, int> BinopPrecedence;

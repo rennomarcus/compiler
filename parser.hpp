@@ -20,6 +20,9 @@ void HandleElseBlock(Scan_file*, Main_block*);
 VariableAST* HandleVariableDeclaration(Scan_file *, Main_block *);
 void parser(Scan_file *, Main_block *);
 
+
+void ExternalFunctions(Scan_file*, Main_block*);
+
 BasicAST* convert_tok_ast(int, std::string);
 
 class NBlock;

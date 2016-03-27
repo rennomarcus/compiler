@@ -98,7 +98,7 @@ Shunting::Shunting(Scan_file *scan) {
 //Debug function
 void Shunting::print() {
     token t;
-    std::cout << "*************PRINTING ";
+    std::cout << "(Shunting yard printing) ";
     for (auto it = equation.begin(); it != equation.end(); it++) {
         t = *it;
         if (t.token_type == T_INTEGER || t.token_type == T_FLOAT || t.token_type == T_IDENTIFIER) {

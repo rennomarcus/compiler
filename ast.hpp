@@ -1,11 +1,11 @@
 #ifndef __ast_h
 #define __ast_h
 
-#include "llvm/ADT/STLExtras.h"
-#include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/Module.h"
-#include "llvm/IR/Verifier.h"
+#include <llvm/ADT/STLExtras.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/Module.h>
+#include <llvm/IR/Verifier.h>
 #include <llvm/ExecutionEngine/GenericValue.h>
 #include <iostream>
 #include <string>
@@ -34,17 +34,23 @@ class IntegerAST : public BasicAST {
     int value;
 
     public:
-    void print() { std::cout << "(print)Integer " << this->value << std::endl; }
+    void print() { std::cout << "(print) Integer " << this->value << std::endl; }
     IntegerAST(int v) : value(v) {}
     llvm::Value* codegen(Main_block* mblock);
 };
 
-class CallExprAST : public BasicAST {
+class CallFuncAST : public BasicAST {
     std::string callee;
     std::vector<llvm:: Value*> args;
-
+    int external;
     public:
-    void print() {}
+    void print() { std::cout << "(print) CallFunc" << this->callee << std::endl; }
+    int get_external() { return external; }
+    void set_external() { external = 1; }
+    void set_name(std::string name) { this->callee = name; }
+
+    std::string get_name() { return callee; }
+    CallFuncAST() { external = 0; }
     llvm::Value* codegen(Main_block*);
 };
 
@@ -52,7 +58,7 @@ class VariableAST : public BasicAST {
     int var_type;
     std::string name;
     public:
-    void print() { std::cout << "(print)Variable" << get_name() << std::endl; }
+    void print() { std::cout << "(print) Variable" << get_name() << std::endl; }
     std::string get_name() { return this->name; }
     VariableAST(std::string name, int var_type) : name(name), var_type(var_type) {}
     llvm::Value* codegen(Main_block*);
@@ -181,6 +187,7 @@ class FunctionAST : public BasicAST {
     void add_var(VariableAST* var); //add var to local variables of this function
     void add_statement(BasicAST*);
     void add_special(FlowBlock*, int);
+    void add_return(Main_block*);
     void pop_special();
 
     void inc_state() { this->state = this->state + 1; }
@@ -198,21 +205,39 @@ class FunctionAST : public BasicAST {
     void show_dump() { func->dump(); }
 };
 
+struct structure {
+    std::string var_name;
+    llvm::Type* type;
+    int state;
+};
+class Structure {
+    std::vector<struct structure> structures;
+    int state;
 
+    public:
+    Structure() { state = 0; }
+    void print() { std::cout << "(print) structures" << std::endl; }
+    void add_structure(std::string, llvm::Type*);
+    void inc_state() { state++; }
+    void codegen(Main_block* );
+
+};
 
 class Main_block {
     std::string name;
     std::unique_ptr<llvm::Module> mod;
     std::vector<llvm::BasicBlock*> block;
     std::map<std::string, llvm::Value*> local_var;
+    Structure* s;
 
     llvm::Function *main;
     std::vector<FunctionAST*> functions;
+    int function_position;
     public:
-
+    Main_block();
 
     void set_name(std::string name) { this->name = name; }
-    llvm::Module* get_module() { return mod.get(); }
+
     void codegen();
     void show_dump() { mod->dump(); }
     void add_var(VariableAST* var); //add variable to last function inserted
@@ -221,14 +246,22 @@ class Main_block {
     void add_block(llvm::BasicBlock *bb) { block.push_back(bb); }
     void add_statement(BasicAST*); //add a statement to the current block
     void add_special(FlowBlock*, int); //add a special block
+    void add_structure(std::string v,llvm::Type* t) { s->add_structure(v,t); }
 
     void pop_special(); //pop the last special block in the current function
     void pop_block() { block.pop_back(); }
+    void pop_function();
+    void inc_structure() { s->inc_state(); }
+    void inc_function() { function_position++; }
 
     void change_state(); //used in the control flow
-
     llvm::BasicBlock* get_block() { return this->block.back(); }
-    FunctionAST* get_func() { return this->functions.back(); }
+    FunctionAST* get_func();
+    FunctionAST* get_func(int);
+    FunctionAST* get_main_func() { return this->functions.front(); }
+    llvm::Module* get_module() { return mod.get(); }
+
+    llvm::GenericValue runCode();
 };
 ///TODO
 /*
