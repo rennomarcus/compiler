@@ -42,14 +42,23 @@ class IntegerAST : public BasicAST {
 class CallFuncAST : public BasicAST {
     std::string callee;
     std::vector<llvm:: Value*> args;
+    std::string message;
+    std::string g_var;
+    std::string var;
+
     int external;
     public:
     void print() { std::cout << "(print) CallFunc" << this->callee << std::endl; }
     int get_external() { return external; }
     void set_external() { external = 1; }
+    void set_message(int);
     void set_name(std::string name) { this->callee = name; }
+    void set_var(std::string var) { this->var = var; }
 
     std::string get_name() { return callee; }
+    std::string get_message() { return message; }
+    std::string get_gvar() { return g_var; }
+    std::string get_var() { return var; }
     CallFuncAST() { external = 0; }
     llvm::Value* codegen(Main_block*);
 };

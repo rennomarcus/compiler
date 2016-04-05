@@ -330,24 +330,87 @@ Value* AssignAST::codegen(Main_block* mblock) {
     return nullptr;
 }
 
+void CallFuncAST::set_message(int type) {
+    std::string message;
+    switch (type) {
+        case F_PUTBOOL:
+            message = "%d\x0A";
+            this->g_var = "bool";
+            break;
+        case F_PUTCHAR:
+            message = "%c\x0A";
+            this->g_var = "char";
+            break;
+        case F_PUTFLOAT:
+            message = "%f\x0A";
+            this->g_var = "float";
+            break;
+        case F_PUTINTEGER:
+            message = "%d\x0A";
+            this->g_var = "int";
+            break;
+        case F_PUTSTRING:
+            message = "%s\x0A";
+            this->g_var = "string";
+            break;
+    }
+    this->message = message;
+}
 Value* CallFuncAST::codegen(Main_block* mblock) {
     //CallInst *call = CallInst::Create(function, args.begin(), args.end(), "", context.currentBlock());
-    std::cout << "Calling function: " << std::endl;
+    std::cout << "Calling function: extern printf" << std::endl;
     //need to check if the function exists
-    Function* func; //= mod->getFunction("printf");
     Module* mod = mblock->get_module();
-    func = mod->getFunction(get_name());
-    if (get_external() && !func) {
+    Function* func = mod->getFunction("printf");
+    FunctionAST* func_block = mblock->get_func(0);
+
+    if (!func) {
+        PointerType* PointerTy = PointerType::get(IntegerType::get(mod->getContext(), 8), 0);
         std::vector<Type*>FuncTy_args;
-        //FuncTy_args.push_back(Type::getInt32Ty(getGlobalContext()));
-        FunctionType* FuncTy = FunctionType::get(Type::getVoidTy(getGlobalContext()), FuncTy_args, false);
-        func = Function::Create(/*Type=*/FuncTy, /*Linkage=*/GlobalValue::ExternalLinkage, /*Name=*/ get_name(), mblock->get_module()); // (external, no body)
+        FuncTy_args.push_back(PointerTy);
+        FunctionType* FuncTy = FunctionType::get(/*Result=*/IntegerType::get(mod->getContext(), 32),
+                                                /*Params=*/FuncTy_args,
+                                                /*isVarArg=*/true);
+        func = Function::Create(FuncTy, GlobalValue::ExternalLinkage, "printf", mblock->get_module()); // (external, no body)
         func->setCallingConv(CallingConv::C);
-        std::vector<Value*> int32_55_params;
-        Value* const_int = ConstantInt::get(Type::getInt32Ty(getGlobalContext()), 3);
-        int32_55_params.push_back(const_int);
-        CallInst *call = CallInst::Create(func, int32_55_params, "", mblock->get_block());
+
     }
+    std::string var_name = "." + get_gvar();
+    GlobalVariable* gvar = mod->getGlobalVariable(var_name, true);
+
+    if (!gvar) {
+        ArrayType* ArrayTy = ArrayType::get(IntegerType::get(mod->getContext(), 8), 4);
+        gvar = new GlobalVariable(/*Module=*/*mod, /*Type=*/ArrayTy,/*isConstant=*/true,
+            /*Linkage=*/GlobalValue::PrivateLinkage, /*Initializer=*/0,  /*Name=*/var_name );
+
+    }
+
+    Constant *const_array = ConstantDataArray::getString(mod->getContext(), get_message(), true);
+    gvar->setInitializer(const_array);
+
+    ConstantInt* const_int32_zero = ConstantInt::get(mod->getContext(), APInt(32, StringRef("0"), 10));
+
+    std::vector<Constant*> const_indices;
+    const_indices.push_back(const_int32_zero);
+    const_indices.push_back(const_int32_zero);
+    Constant* const_ptr = ConstantExpr::getGetElementPtr(gvar , const_indices);
+
+    std::vector<Value*> params;
+    params.push_back(const_ptr);
+
+    if (isdigit(get_var()[0])) {
+        Constant* val = ConstantInt::get(Type::getInt32Ty(getGlobalContext()), std::stoi(get_var()) );
+        params.push_back(val);
+    }
+    else {
+        Value* val = func_block->get_var(get_var());
+        LoadInst* val_load = new LoadInst( val , "", false, mblock->get_block());
+        params.push_back(val_load);
+    }
+
+
+    CallInst *call = CallInst::Create(func, params, "", mblock->get_block());
+
     return nullptr;
 }
 

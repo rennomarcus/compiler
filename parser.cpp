@@ -181,18 +181,41 @@ void HandleStatement(Scan_file* scan, Main_block* mblock) {
         }
     }
 }
+//type == 1 for print, ==0 for read...
+void setExternalFunction(Scan_file* scan, Main_block* mblock, CallFuncAST* func, int type) {
+    if (type == 1)
+        func->set_name("printf");
+    else
+        func->set_name("read");
 
+    int value = scan->get_tok();
+    if (scan->scan_tok() != T_LPAREN)
+        Error("Invalid function call");
+    if (scan->scan_tok() != T_IDENTIFIER && scan->get_tok() != T_INTEGER && scan->get_tok() != T_FLOAT)
+        Error("Invalid function call");
+    func->set_message(value);
+    func->set_var(scan->get_value());
+    mblock->add_statement(func);
+}
 void ExternalFunctions(Scan_file* scan, Main_block* mblock) {
     CallFuncAST* func = new CallFuncAST;
-
+    func->set_external();
+    func->set_message(scan->get_tok());
     switch (scan->get_tok()) {
-        case F_PUTBOOL: case F_PUTCHAR: case F_PUTINTEGER: case F_PUTSTRING:
-            printf("############## CALLING EXTERNAL\n");
-            func->set_external();
-            func->set_name("printf");
-
-            mblock->add_statement(func);
+        case F_PUTBOOL:
+            setExternalFunction(scan,mblock,func,1);
+            break;
+        case F_PUTCHAR:
+            setExternalFunction(scan,mblock,func,1);
+            break;
+        case F_PUTINTEGER:
+            setExternalFunction(scan,mblock,func,1);
+            break;
+        case F_PUTSTRING:
+            setExternalFunction(scan,mblock,func,1);
+            break;
     }
+
 }
 
 //handle beginning and closing program
