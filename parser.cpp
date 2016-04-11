@@ -6,7 +6,7 @@ using namespace llvm;
 //return the type of the variable for allocation and arguments of functions
 Type* typeOf(int type) {
     if (type == T_INTEGER) {
-        return Type::getInt32PtrTy(getGlobalContext());
+        return Type::getInt32Ty(getGlobalContext());
     }
     if (type == T_FLOAT) {
         return Type::getFloatTy(getGlobalContext());
@@ -168,10 +168,14 @@ void HandleStatement(Scan_file* scan, Main_block* mblock) {
         std::string name = scan->get_value();
         if (scan->scan_tok() == T_LPAREN) {
             //handle call function;
-            std::cout << "#call function" << std::endl;
+            std::cout << "#call function ---- " << name << std::endl;
+            CallFuncAST* func = new CallFuncAST(name);
 
-            while (scan->scan_tok() != T_RPAREN)
-                ;
+            while (scan->scan_tok() != T_RPAREN) {
+                if (scan->get_tok() != T_COMMA)
+                    func->add_arg(scan->get_value());
+            }
+            mblock->add_statement(func);
         }
         if (scan->get_tok() == T_ASSIGN) {
 
@@ -318,11 +322,13 @@ VariableAST* HandleVariableDeclaration(Scan_file *scan, Main_block *mblock) {
         //add as arg to back block in mblock
         if (scan->get_tok() == T_IN) {
             mblock->add_arg(var_name, typeOf(type));
+            mblock->add_mask(1);
         }
 
         if (scan->get_tok() == T_OUT) {
             mblock->add_var(var);
             mblock->add_structure(var_name, typeOf(type));
+            mblock->add_mask(0);
         }
 
 

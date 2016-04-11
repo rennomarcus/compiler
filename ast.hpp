@@ -14,6 +14,7 @@
 #include "scan.hpp"
 
 class Main_block;
+class FunctionAST;
 
 class BasicAST {
     public:
@@ -41,14 +42,16 @@ class IntegerAST : public BasicAST {
 
 class CallFuncAST : public BasicAST {
     std::string callee;
-    std::vector<llvm:: Value*> args;
     std::string message;
     std::string g_var;
     std::string var;
+    std::vector<std::string> args;
+    std::vector<FunctionAST*> functions;
 
     int external;
     public:
     void print() { std::cout << "(print) CallFunc" << this->callee << std::endl; }
+    void add_arg(std::string arg) { args.push_back(arg); }
     int get_external() { return external; }
     void set_external() { external = 1; }
     void set_message(int);
@@ -59,7 +62,10 @@ class CallFuncAST : public BasicAST {
     std::string get_message() { return message; }
     std::string get_gvar() { return g_var; }
     std::string get_var() { return var; }
+    std::vector<std::string> get_args() { return this->args; }
+    FunctionAST* get_func(Main_block*);
     CallFuncAST() { external = 0; }
+    CallFuncAST(std::string name) : callee(name) { external = 0; }
     llvm::Value* codegen(Main_block*);
 };
 
@@ -140,8 +146,6 @@ class CondAST : public FlowBlock {
     std::vector<int> operand; //operand of condition
     std::vector<BasicAST*> rhs; //condition rhs
 
-
-
     public:
     std::vector<BasicAST*> get_true_statement() { return this->true_statements; }
     std::vector<BasicAST*> get_false_statement() { return this->false_statements; }
@@ -182,6 +186,7 @@ class FunctionAST : public BasicAST {
     std::string name; //head
     int func_type; //head
     std::map<std::string, llvm::Type*> args; //head
+    std::vector<int> arg_mask;
 
     std::vector<BasicAST*> list_statement; //body
     SpecialBlock* sblocks; //body
@@ -197,6 +202,7 @@ class FunctionAST : public BasicAST {
     void add_statement(BasicAST*);
     void add_special(FlowBlock*, int);
     void add_return(Main_block*);
+    void add_mask(int m) { this->arg_mask.push_back(m); }
     void pop_special();
 
     void inc_state() { this->state = this->state + 1; }
@@ -205,11 +211,13 @@ class FunctionAST : public BasicAST {
     int change_var_value(std::string, llvm::Value*);
     void change_state() { sblocks->change_state(); };
 
+    void set_func(llvm::Function* f) { this->func = f; }
     std::string get_name() { return this->name; }
     std::vector<llvm::Type *> get_args_type();
     llvm::Value* get_var(std::string var) { return this->local_var[var]; }
     llvm::Function* get_func() { return this->func; }
     int get_state() { return this->state; }
+    std::vector<int> get_mask() { return this->arg_mask; }
     llvm::Value* codegen(Main_block *);
     void show_dump() { func->dump(); }
 };
@@ -256,7 +264,7 @@ class Main_block {
     void add_statement(BasicAST*); //add a statement to the current block
     void add_special(FlowBlock*, int); //add a special block
     void add_structure(std::string v,llvm::Type* t) { s->add_structure(v,t); }
-
+    void add_mask(int);
     void pop_special(); //pop the last special block in the current function
     void pop_block() { block.pop_back(); }
     void pop_function();
@@ -268,8 +276,10 @@ class Main_block {
     FunctionAST* get_func();
     FunctionAST* get_func(int);
     FunctionAST* get_main_func() { return this->functions.front(); }
+    std::vector<FunctionAST*> get_functions() { return this->functions; }
     llvm::Module* get_module() { return mod.get(); }
 
+    void reset();
     llvm::GenericValue runCode();
 };
 ///TODO

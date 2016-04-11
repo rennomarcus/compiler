@@ -40,6 +40,10 @@ void Main_block::add_special(FlowBlock* special, int type) {
     FunctionAST *func = this->functions.back();
     func->add_special(special, type);
 }
+void Main_block::add_mask(int m) {
+    FunctionAST *func = this->functions.back();
+    func->add_mask(m);
+}
 
 void Main_block::pop_special() {
     FunctionAST *func = this->functions.back();
@@ -52,7 +56,12 @@ void Main_block::change_state() {
     FunctionAST *func = this->functions.back();
     func->change_state();
 }
-
+void Main_block::reset() {
+    int total = this->functions.size() -1;
+    if (this->function_position == total) {
+        this->function_position = 0;
+    }
+}
 FunctionAST* Main_block::get_func() {
     std::vector<FunctionAST*>::iterator it = functions.begin();
     return *(it + this->function_position);
@@ -61,6 +70,7 @@ FunctionAST* Main_block::get_func(int pos) {
     std::vector<FunctionAST*>::iterator it = functions.begin();
     return *(it + pos);
 }
+
 
 void Main_block::codegen() {
     this->mod = llvm::make_unique<Module>(this->name, getGlobalContext());
@@ -73,6 +83,24 @@ void Main_block::codegen() {
     Builder.SetInsertPoint(bb);*/
     ///addstruct code
     this->s->codegen(this);
+
+    ///forward declarion of functions
+    for (auto it = (this->functions.begin() + 1); it != this->functions.end(); it++) {
+        std::cout << "-------------FUNCTION HERE " << (*it)->get_name() << std::endl;
+        FunctionAST* f = (*it);
+        std::vector<Type *> args_type = f->get_args_type();
+        Module* mod = get_module();
+        std::string struct_name("struct.");
+        struct_name.append(f->get_name());
+        Type* StructTy = mod->getTypeByName(struct_name);
+        if (!StructTy)  {
+            StructTy = Type::getVoidTy(getGlobalContext());
+        }
+
+        FunctionType *ftype = FunctionType::get(StructTy, args_type, false);
+        Constant* c = mod->getOrInsertFunction(f->get_name(), ftype);
+        Function *func = cast<Function>(c);
+    }
 
     std::vector<FunctionAST*>::iterator it;
     for (it = (this->functions).begin(); it != (this->functions).end(); it++) {
@@ -183,6 +211,19 @@ void FunctionAST::add_return(Main_block* mblock) {
     StructType* StructTy = mod->getTypeByName(struct_name);
     if (StructTy) {
         AllocaInst* ptr_ret = new AllocaInst(StructTy, "return", current );
+
+        //Load values to return here!
+        /*Value *v = get_var("y");
+        if (v) {
+            ConstantInt* const_int32_11 = ConstantInt::get(mod->getContext(), APInt(32, StringRef("0"), 10));
+            std::vector<Value*> ptr_25_indices;
+            ptr_25_indices.push_back(const_int32_11);
+            ptr_25_indices.push_back(const_int32_11);
+            Instruction* ptr_25 = GetElementPtrInst::Create(ptr_ret, ptr_25_indices, "val1", current);
+            StoreInst* void_26 = new StoreInst(v, ptr_25, false, current);
+        }*/
+
+
         LoadInst* ret =  new LoadInst(ptr_ret, "", false, current);
         ReturnInst::Create(getGlobalContext(), ret, current );
     } else {
@@ -258,22 +299,35 @@ llvm::Value* FunctionAST::codegen(Main_block *mblock) {
     }
 
     FunctionType *ftype = FunctionType::get(StructTy, args_type, false);
-    Function *func = Function::Create(ftype, GlobalValue::InternalLinkage, this->name,  mblock->get_module());
-    BasicBlock *bb = BasicBlock::Create(getGlobalContext(), "entry", func);
+    //Function *func = Function::Create(ftype, GlobalValue::InternalLinkage, this->name,  mblock->get_module());
+    Constant* c = mod->getOrInsertFunction(get_name(), ftype);
+    Function *func = cast<Function>(c);
     this->func = func;
-    std::cout << "Function created: " << this->name << std::endl;
+    BasicBlock *bb = BasicBlock::Create(getGlobalContext(), "entry", func);
     mblock->inc_function();
+
+    std::cout << "Function created: " << this->name << std::endl;
+    this->bb = bb;
+    mblock->add_block(bb);
+    Builder.SetInsertPoint(bb);
+
     auto my_arg = this->args.begin();
-    for (auto args = func->arg_begin(); args != func->arg_end(); ++args) {
-        Value *x = args;
+    for (auto argument = func->arg_begin(); argument != func->arg_end(); ++argument, my_arg++) {
+        Value* x = argument;
         x->setName(my_arg->first);
         this->local_var[my_arg->first] = x;
         my_arg++;
     }
 
-    this->bb = bb;
-    mblock->add_block(bb);
-    Builder.SetInsertPoint(bb);
+    for (auto it = this->args.begin(); it != this->args.end(); it++){
+        Value* val = get_var(it->first);
+        AllocaInst* tmp_ptr = new AllocaInst(val->getType(), "", bb);
+        StoreInst* tmp_store = new StoreInst(val, tmp_ptr, false, bb);
+        this->local_var[it->first] = tmp_ptr;
+        //LoadInst* val_load = new LoadInst( tmp_store , "load_instr_arg", false, bb);
+    }
+
+
     for (auto it = list_statement.begin(); it != list_statement.end(); it++) {
         (*it)->codegen(mblock);
     }
@@ -356,14 +410,29 @@ void CallFuncAST::set_message(int type) {
     }
     this->message = message;
 }
+FunctionAST* CallFuncAST::get_func(Main_block* mblock){
+    this->functions = mblock->get_functions();
+
+    for (auto it = functions.begin(); it != functions.end(); it++) {
+        FunctionAST* f = *(it);
+        if (f->get_name() == get_name()) {
+            return *(it);
+        }
+    }
+    return nullptr;
+}
 Value* CallFuncAST::codegen(Main_block* mblock) {
     //CallInst *call = CallInst::Create(function, args.begin(), args.end(), "", context.currentBlock());
-    std::cout << "Calling function: extern printf" << std::endl;
+    std::cout << "-----------------------------Calling function: #" << get_name() << std::endl;
     //need to check if the function exists
     Module* mod = mblock->get_module();
-    Function* func = mod->getFunction("printf");
-    FunctionAST* func_block = mblock->get_func(0);
 
+
+    Function* func = mod->getFunction(get_name());
+    FunctionAST* func_block = mblock->get_func();
+    std::cout << "Inside function: " << func_block->get_name() << std::endl;
+
+    CallInst *call;
     if (!func) {
         PointerType* PointerTy = PointerType::get(IntegerType::get(mod->getContext(), 8), 0);
         std::vector<Type*>FuncTy_args;
@@ -375,41 +444,91 @@ Value* CallFuncAST::codegen(Main_block* mblock) {
         func->setCallingConv(CallingConv::C);
 
     }
-    std::string var_name = "." + get_gvar();
-    GlobalVariable* gvar = mod->getGlobalVariable(var_name, true);
+    if (get_external()) {
+        std::string var_name = "." + get_gvar();
+        GlobalVariable* gvar = mod->getGlobalVariable(var_name, true);
 
-    if (!gvar) {
-        ArrayType* ArrayTy = ArrayType::get(IntegerType::get(mod->getContext(), 8), 4);
-        gvar = new GlobalVariable(/*Module=*/*mod, /*Type=*/ArrayTy,/*isConstant=*/true,
-            /*Linkage=*/GlobalValue::PrivateLinkage, /*Initializer=*/0,  /*Name=*/var_name );
+        if (!gvar) {
+            ArrayType* ArrayTy = ArrayType::get(IntegerType::get(mod->getContext(), 8), 4);
+            gvar = new GlobalVariable(/*Module=*/*mod, /*Type=*/ArrayTy,/*isConstant=*/true,
+                /*Linkage=*/GlobalValue::PrivateLinkage, /*Initializer=*/0,  /*Name=*/var_name );
+        }
 
-    }
+        Constant *const_array = ConstantDataArray::getString(mod->getContext(), get_message(), true);
+        gvar->setInitializer(const_array);
 
-    Constant *const_array = ConstantDataArray::getString(mod->getContext(), get_message(), true);
-    gvar->setInitializer(const_array);
+        ConstantInt* const_int32_zero = ConstantInt::get(mod->getContext(), APInt(32, StringRef("0"), 10));
 
-    ConstantInt* const_int32_zero = ConstantInt::get(mod->getContext(), APInt(32, StringRef("0"), 10));
+        std::vector<Constant*> const_indices;
+        const_indices.push_back(const_int32_zero);
+        const_indices.push_back(const_int32_zero);
+        Constant* const_ptr = ConstantExpr::getGetElementPtr(gvar , const_indices);
+        std::vector<Value*> params;
+        params.push_back(const_ptr);
 
-    std::vector<Constant*> const_indices;
-    const_indices.push_back(const_int32_zero);
-    const_indices.push_back(const_int32_zero);
-    Constant* const_ptr = ConstantExpr::getGetElementPtr(gvar , const_indices);
+        if (isdigit(get_var()[0])) {
+            Constant* val = ConstantInt::get(Type::getInt32Ty(getGlobalContext()), std::stoi(get_var()) );
+            params.push_back(val);
+        }
+        else {
+            Value* val = func_block->get_var(get_var());
+            LoadInst* val_load = new LoadInst( val , "", false, mblock->get_block());
+            params.push_back(val_load);
+        }
 
-    std::vector<Value*> params;
-    params.push_back(const_ptr);
-
-    if (isdigit(get_var()[0])) {
-        Constant* val = ConstantInt::get(Type::getInt32Ty(getGlobalContext()), std::stoi(get_var()) );
-        params.push_back(val);
+        call = CallInst::Create(func, params, "", mblock->get_block());
     }
     else {
-        Value* val = func_block->get_var(get_var());
-        LoadInst* val_load = new LoadInst( val , "", false, mblock->get_block());
-        params.push_back(val_load);
+        std::cout << "********************* " << func_block->get_name() << std::endl;
+        FunctionAST* callee_func = get_func(mblock);
+        auto mask = callee_func->get_mask();
+        auto mask_iterator = mask.begin();
+        int count_mask = 0;
+        std::vector<Value*> params;
+        auto args = get_args();
+        for (auto it = args.begin(); it != args.end(); it++, count_mask++) {
+            if (*(mask_iterator + count_mask)) {
+            //Add arguments to call function
+                auto arg = *(it);
+                BasicAST* tmp;
+                if (isdigit(arg[0])) {
+                    std::cout << "numero" << std::endl;
+                    std::string period = ".";
+                    std::size_t found = arg.find(period);
+                    if (found!=std::string::npos){
+                        std::cout << "float "<< std::endl;
+                        tmp = new FloatAST(std::stof(arg));
+                        params.push_back(tmp->codegen(mblock));
+                    }
+                    else {
+                        std::cout << "integer "<< std::endl;
+                        tmp = new IntegerAST(std::stoi(arg));
+                        Value* v = tmp->codegen(mblock);
+                        /*Value* ptr_int = ConstantExpr::getIntToPtr(cast<Constant>(v), \
+                            PointerType::getUnqual( Type::getInt32Ty(getGlobalContext()) ),false);*/
+                        //PointerType* ptr = PointerType::get(v->getType(),0);
+                        params.push_back(v);
+                    }
+                }
+                else {
+                    std::cout << "variavel "<< std::endl;
+                    params.push_back(func_block->get_var(arg));
+                }
+            }
+            else {
+                //load return for the function called for the OUT variables
+                std::string struct_name("struct.");
+                struct_name.append(callee_func->get_name());
+                Type* StructTy = mod->getTypeByName(struct_name);
+                if (!StructTy)  {
+                    StructTy = Type::getVoidTy(getGlobalContext());
+                }
+
+            }
+        }
+        call = CallInst::Create(func, params, "", mblock->get_block());
     }
 
-
-    CallInst *call = CallInst::Create(func, params, "", mblock->get_block());
 
     return nullptr;
 }
@@ -449,6 +568,7 @@ Value* EndFunctionAST::codegen(Main_block* mblock) {
     std::cout << "End of function code" << std::endl;
     FunctionAST *func = mblock->get_func();
     func->add_return(mblock);
+    mblock->reset(); //work around, because function was not returning correctly... not the best practice
 
     mblock->pop_block();
 

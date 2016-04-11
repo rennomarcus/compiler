@@ -2,14 +2,17 @@
 
 program test_program is
     integer a;
+    integer das;
     procedure f (integer x in, integer y out)
         integer b;
     begin
         b := 3+2*6+10;
         y := 10;
         x := 15;
+        putInteger(x);
         if (b == 25) then
             b := 40;
+            putInteger(b);
         else
             b := 50;
         end if;
@@ -23,7 +26,8 @@ program test_program is
 
 begin
     a := 5;
+    das := 9;
     f(6, a);
     putInteger(a);
-    
+    putInteger(12);
 end program .
