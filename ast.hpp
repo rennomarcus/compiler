@@ -235,6 +235,7 @@ class Structure {
     Structure() { state = 0; }
     void print() { std::cout << "(print) structures" << std::endl; }
     void add_structure(std::string, llvm::Type*);
+    std::vector<std::string> get_vars(Main_block*,std::string);
     void inc_state() { state++; }
     void codegen(Main_block* );
 
@@ -278,7 +279,7 @@ class Main_block {
     FunctionAST* get_main_func() { return this->functions.front(); }
     std::vector<FunctionAST*> get_functions() { return this->functions; }
     llvm::Module* get_module() { return mod.get(); }
-
+    std::vector<std::string> get_struct_vars(std::string func_name) { return s->get_vars(this,func_name); }
     void reset();
     llvm::GenericValue runCode();
 };

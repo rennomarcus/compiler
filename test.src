@@ -3,18 +3,20 @@
 program test_program is
     integer a;
     integer das;
-    procedure f (integer x in, integer y out)
+    integer myarray[5];
+    procedure f (integer x in, integer y in, integer sum out, integer mul out)
         integer b;
     begin
         b := 3+2*6+10;
-        y := 10;
-        x := 15;
+        sum := 10;
+        mul := 15;
         putInteger(x);
-        if (b == 25) then
+        if (b == x) then
             b := 40;
             putInteger(b);
         else
             b := 50;
+            putInteger(y);
         end if;
     end procedure;
 
@@ -27,7 +29,7 @@ program test_program is
 begin
     a := 5;
     das := 9;
-    f(6, a);
+    f(6, 10, a, das);
     putInteger(a);
-    putInteger(12);
+    putInteger(das);
 end program .

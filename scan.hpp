@@ -71,19 +71,23 @@ using namespace std;
 
 #define MAX_RESERVED_KEYS 28
 
-
+struct previous_scan {
+    int token;
+    std::string value;
+};
 
 class Scan_file {
     std::string name;
     ifstream *myfile;
     int token;
     std::string value;
-
+    struct previous_scan previous;
     std::string g_table[MAX_RESERVED_KEYS]; //symbol table
 
     int lookup(std::string);
     void create_table();
     void insert_reserved(char *,int);
+    void assign_attributes(int, std::string);
     char remove_comment(char ch);
 
     public:
@@ -92,6 +96,8 @@ class Scan_file {
     int scan_tok();
     int get_tok();
     std::string get_value();
+    int get_previous_tok();
+    std::string get_previous_value();
     void display_table();
 };
 

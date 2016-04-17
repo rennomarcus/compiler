@@ -254,7 +254,6 @@ void HandleFunction(Scan_file *scan, Main_block *mblock) {
             Error("Invalid syntax for procedure");
         }
         std::string name = scan->get_value();
-        std::cout << name << std::endl;
         if (scan->scan_tok() != T_LPAREN) {
             Error("Missing '('");
         }

@@ -19,6 +19,18 @@ int Scan_file::get_tok() {
 std::string Scan_file::get_value() {
     return this->value;
 }
+
+int Scan_file::get_previous_tok() {
+    return previous.token;
+}
+std::string Scan_file::get_previous_value() {
+    return previous.value;
+}
+void Scan_file::assign_attributes(int t, std::string v) {
+    this->token = t;
+    this->value = v;
+}
+
 char Scan_file::remove_comment(char ch) {
     if (ch == '/') {
         (*myfile).get(ch);
@@ -58,7 +70,8 @@ char Scan_file::remove_comment(char ch) {
 int Scan_file::scan_tok() {
     char ch;
     std::string IdentifierStr;
-
+    previous.token = get_tok();
+    previous.value = get_value();
     if (myfile->is_open())
     {
 
@@ -67,27 +80,37 @@ int Scan_file::scan_tok() {
 
 
         if (myfile->eof()) {
-            this->token = T_EOF;
+            assign_attributes(T_EOF, "");
             return T_EOF;
         }
         while (isspace(ch)) {
+            if (ch == '\n') {
+                g_line++;
+            }
             (*myfile).get(ch);
             if (myfile->eof()) {
-                this->token = T_EOF;
+                assign_attributes(T_EOF, "");
                 return T_EOF;
             }
         }
         ch = remove_comment(ch);
         if (ch == '\0') {
-            this->token = T_EOF;
+            assign_attributes(T_EOF, "\0");
             return T_EOF;
         }
         if (ch == '.') {
-            this->token = T_PERIOD;
+            assign_attributes(T_PERIOD, ".");
             return T_PERIOD;
         }
 
-
+        if (ch == T_LBRACKET && previous.token == T_IDENTIFIER) {
+            (*myfile).get(ch);
+            if (isdigit(ch)) {
+                ///TODO: array
+                (*myfile).get(ch);
+                (*myfile).get(ch);
+            } else { Error("Invalid array"); }
+        }
 
         if (isalpha(ch)) { // identifier: [a-zA-Z][a-zA-Z0-9]*
             IdentifierStr = ch;
@@ -101,8 +124,7 @@ int Scan_file::scan_tok() {
                     break;
                 }
             }
-            this->value = IdentifierStr;
-            this->token = lookup(IdentifierStr);
+            assign_attributes(lookup(IdentifierStr), IdentifierStr);
             return this->token;
         }
 
@@ -117,16 +139,13 @@ int Scan_file::scan_tok() {
             std::size_t found = NumStr.find(period);
             if (found!=std::string::npos){
                 double value = strtod(NumStr.c_str(), 0);
-                this->value = NumStr.c_str();
-                this->token = T_FLOAT;
+                assign_attributes(T_FLOAT, NumStr.c_str());
                 return T_FLOAT;
             }
             else {
                 (*myfile).putback(ch);
             }
-            //int value = strtod(, 0);
-            this->value = NumStr.c_str();
-            this->token = T_INTEGER;
+            assign_attributes(T_INTEGER, NumStr.c_str());
             return T_INTEGER;
         }
 
@@ -138,12 +157,12 @@ int Scan_file::scan_tok() {
             if (ch != '=')
                 (*myfile).putback(ch);
             else {
-                this->token = T_ASSIGN;
+                assign_attributes(T_ASSIGN, "=");
                 return T_ASSIGN;
             }
         }
         this->token = ch;
-        //std::cout << "TOKEN " <<  ch << "\n";
+        assign_attributes(ch, "" + ch);
         return ch;
 
     }

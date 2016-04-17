@@ -37,6 +37,7 @@ using namespace llvm;
 llvm::IRBuilder<> Builder(llvm::getGlobalContext());
 int state = 0;
 std::map<char, int> BinopPrecedence;
+int g_line = 1;
 
 int main () {
     BinopPrecedence['+'] = 1;
@@ -51,7 +52,6 @@ int main () {
     Main_block *module = new Main_block();
 
     int i = 0;
-
 
     while (scan->scan_tok() != T_EOF) {
         //parser
