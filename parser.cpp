@@ -50,7 +50,7 @@ void parser(Scan_file* scan, Main_block* mblock) {
 //check (if, then, else) blocks
 void HandleIfBlock(Scan_file* scan, Main_block* mblock) {
     CondAST* cond;
-    std::cout << "If block" << std::endl;
+    Debug("If block");
     if (scan->get_tok() == T_IF) {
         scan->scan_tok();
         if (scan->get_tok() == T_LPAREN) {
@@ -141,7 +141,7 @@ int HandleIfOperator(Scan_file* scan, Main_block* mblock){
 
 //check assigning and call functions. then it will add to current function
 void HandleTopLevelExpression(Scan_file* scan, Main_block* mblock) {
-    std::cout << "top level " << scan->get_tok() << std::endl;
+    Debug("top level", std::to_string(scan->get_tok()).c_str() );
     switch(scan->get_tok()) {
         case T_BEGIN:
             break;
@@ -163,12 +163,12 @@ std::vector<BasicAST*> HandleMath(Scan_file* scan, Main_block* mblock) {
 }
 
 void HandleStatement(Scan_file* scan, Main_block* mblock) {
-    std::cout << "handle expr " << std::endl;
+    Debug("handle expr");
     if (scan->get_tok() == T_IDENTIFIER) {
         std::string name = scan->get_value();
         if (scan->scan_tok() == T_LPAREN) {
             //handle call function;
-            std::cout << "#call function ---- " << name << std::endl;
+            Debug("#call function", name.c_str());
             CallFuncAST* func = new CallFuncAST(name);
 
             while (scan->scan_tok() != T_RPAREN) {
@@ -178,8 +178,7 @@ void HandleStatement(Scan_file* scan, Main_block* mblock) {
             mblock->add_statement(func);
         }
         if (scan->get_tok() == T_ASSIGN) {
-
-            std::cout << "#var assigning " << std::endl;
+            Debug("#var assigning");
             AssignAST* assign_var = new AssignAST(name, HandleMath(scan, mblock));
             mblock->add_statement(assign_var);
         }
@@ -230,7 +229,7 @@ void HandleProgram(Scan_file *scan, Main_block *mblock) {
         Error("Missing \'is\' in program declaration");
     }
     else if (state == 0) {
-        std::cout << "Create main func\n";
+        Debug("Create main func\n");
         state++;
         FunctionAST *main = new FunctionAST("main");
         mblock->add_func(main);
@@ -242,14 +241,14 @@ void HandleFunction(Scan_file *scan, Main_block *mblock) {
 
     if (state == 2) {
         state--;
-        std::cout << "leaving function\n";
+        Debug("leaving function\n");
         EndFunctionAST* endfunc = new EndFunctionAST();
         mblock->add_statement(endfunc);
         mblock->inc_structure();
     }
     else {
         state++;
-        std::cout << "create function ";
+        Debug("create function ");
         if (scan->scan_tok() != T_IDENTIFIER) {
             Error("Invalid syntax for procedure");
         }
@@ -278,7 +277,7 @@ void HandleEnd(Scan_file *scan, Main_block *mblock) {
         if (scan->scan_tok() == T_SEMICOLON) {
             //mblock->add_statement(cond);
             mblock->pop_special();
-            std::cout << "Leaving if block" << std::endl;
+            Debug("Leaving if block");
         }
         else {
             Error("Missing ; after end if statement");
@@ -289,31 +288,45 @@ void HandleEnd(Scan_file *scan, Main_block *mblock) {
             Error("Missing ; after end procedure statement");
         }
         HandleFunction(scan,mblock);
-        std::cout << "Leaving procedure block" << std::endl;
+        Debug("Leaving procedure block");
     }
     else if (scan->get_tok() == T_PROGRAM) {
         if (scan->scan_tok() != T_PERIOD) {
-            std::cout << "PERIOD" << scan->get_tok();
             Error("Missing . after end program statement");
         }
-        std::cout << "Program finished" << std::endl;
+        Debug("Program finished");
     }
 }
 //handles variable allocation and variable arguments of function head
 VariableAST* HandleVariableDeclaration(Scan_file *scan, Main_block *mblock) {
-    std::cout << "Create var ";
+    Debug("Create var ");
     int type = scan->get_tok();
     if (scan->scan_tok() != T_IDENTIFIER) {
         Error("Missing name for variable");
         return nullptr;
     }
-    std::cout << type << " " << scan->get_value() << std::endl;
     std::string var_name = scan->get_value();
-    VariableAST *var = new VariableAST(var_name, type);
+    Debug("Var type", std::to_string(type).c_str());
+    Debug("Var name", var_name.c_str());
 
+
+    VariableAST *var = new VariableAST(var_name, type);
+    bool isarray = false;
+    int array_size = 0;
+    if (scan->scan_tok() == T_ARRAY) {
+        isarray = true;
+        array_size = std::stoi(scan->get_value());
+        Debug("ARRAY size", std::to_string(array_size).c_str());
+        scan->scan_tok();
+    }
     //if it is an internal variable add it to the block
-    if (scan->scan_tok() == T_SEMICOLON) { //go to next token = discard semicolon
-        mblock->add_var(var);
+    if (scan->get_tok() == T_SEMICOLON) { //go to next token = discard semicolon
+        if (!isarray) {
+            mblock->add_var(var);
+        }
+        else {
+            //mblock->add_array(var, array_size);
+        }
         return var;
     }
     //otherwise,  it is an argument of a function. add as an argument to the function

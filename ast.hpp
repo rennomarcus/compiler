@@ -26,7 +26,7 @@ class FloatAST : public BasicAST {
     float value;
 
     public:
-    void print() { std::cout << "(print)Float " << this->value << std::endl; }
+    void print() { Debug("(print)Float ", std::to_string(this->value).c_str()); }
     FloatAST(float v) : value(v) {}
     llvm::Value* codegen(Main_block*);
 };
@@ -35,7 +35,7 @@ class IntegerAST : public BasicAST {
     int value;
 
     public:
-    void print() { std::cout << "(print) Integer " << this->value << std::endl; }
+    void print() { Debug("(print) Integer ", std::to_string(this->value).c_str()); }
     IntegerAST(int v) : value(v) {}
     llvm::Value* codegen(Main_block* mblock);
 };
@@ -50,7 +50,7 @@ class CallFuncAST : public BasicAST {
 
     int external;
     public:
-    void print() { std::cout << "(print) CallFunc" << this->callee << std::endl; }
+    void print() { Debug("(print) CallFunc", this->callee.c_str()); }
     void add_arg(std::string arg) { args.push_back(arg); }
     int get_external() { return external; }
     void set_external() { external = 1; }
@@ -73,7 +73,7 @@ class VariableAST : public BasicAST {
     int var_type;
     std::string name;
     public:
-    void print() { std::cout << "(print) Variable" << get_name() << std::endl; }
+    void print() { Debug("(print) Variable", get_name().c_str()); }
     std::string get_name() { return this->name; }
     VariableAST(std::string name, int var_type) : name(name), var_type(var_type) {}
     llvm::Value* codegen(Main_block*);
@@ -85,7 +85,7 @@ class AssignAST : public BasicAST {
     std::vector<BasicAST*> rhs;
 
     public:
-    void print() { std::cout << "(print)Assigning var: " << this->get_name() << std::endl; }
+    void print() { Debug("(print)Assigning var", this->get_name().c_str()); }
     AssignAST(std::string var_name, std::vector<BasicAST*> rhs) : var(var_name), rhs(rhs) {}
     std::string get_name() { return this->var; }
     llvm::Value* codegen(Main_block*);
@@ -98,7 +98,7 @@ class CallVarAST : public BasicAST {
     public:
     std::string get_var() { return this->var; }
 
-    void print() { std::cout << "(print)Calling var" << this->var<< std::endl; }
+    void print() { Debug("(print)Calling var", this->var.c_str()); }
     CallVarAST(std::string var_name) : var(var_name) {}
     llvm::Value* codegen(Main_block*);
 };
@@ -109,7 +109,7 @@ class BinopAST : public BasicAST {
     BasicAST* op2;
 
     public:
-    void print() { std::cout << "(print) bin op" << std::endl; }
+    void print() { Debug("(print) bin op"); }
     BinopAST(char op, BasicAST* op1, BasicAST* op2) : op(op),op1(op1),op2(op2) {}
     llvm::Value* codegen(Main_block*);
 };
@@ -151,7 +151,7 @@ class CondAST : public FlowBlock {
     std::vector<BasicAST*> get_false_statement() { return this->false_statements; }
     void set_state(int s) { this->state = s; }
 
-    void print() { std::cout << "(print) if block" << std::endl; }
+    void print() { Debug("(print) if block"); }
     void add_condition(BasicAST* lhs, int operand, BasicAST* rhs);
     void add_statement(BasicAST*);
     void change_state() { state++; }
@@ -163,7 +163,7 @@ class CondAST : public FlowBlock {
 
 class EndFunctionAST : public BasicAST {
     public:
-    EndFunctionAST() { std::cout<< "(print) end function" << std::endl; }
+    EndFunctionAST() { Debug("(print) end function"); }
     void print() { }
     llvm::Value* codegen(Main_block *);
 };
@@ -194,7 +194,7 @@ class FunctionAST : public BasicAST {
 
     llvm::BasicBlock* bb;
     public:
-    void print() {  std::cout<< "(print) function " << get_name() << std::endl; }
+    void print() {  Debug("(print) function", get_name().c_str()); }
     FunctionAST(std::string name) : name(name) { this->state = 0; this->sblocks = new SpecialBlock; }
 
     void add_arg(std::string, llvm::Type*); //add argument to this function
@@ -233,7 +233,7 @@ class Structure {
 
     public:
     Structure() { state = 0; }
-    void print() { std::cout << "(print) structures" << std::endl; }
+    void print() { Debug("(print) structures"); }
     void add_structure(std::string, llvm::Type*);
     std::vector<std::string> get_vars(Main_block*,std::string);
     void inc_state() { state++; }
@@ -259,6 +259,7 @@ class Main_block {
     void codegen();
     void show_dump() { mod->dump(); }
     void add_var(VariableAST* var); //add variable to last function inserted
+    void add_array();
     void add_func(FunctionAST* func) { functions.push_back(func); }; //add new function to main block
     void add_arg(std::string, llvm::Type*);
     void add_block(llvm::BasicBlock *bb) { block.push_back(bb); }

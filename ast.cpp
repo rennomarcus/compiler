@@ -59,12 +59,11 @@ void Main_block::codegen() {
     this->mod = llvm::make_unique<Module>(this->name, getGlobalContext());
     std::vector<Type *> args;
 
-    ///addstruct code
+    //addstruct code
     this->s->codegen(this);
 
-    ///forward declarion of functions
+    //forward declarion of functions
     for (auto it = (this->functions.begin() + 1); it != this->functions.end(); it++) {
-        std::cout << "-------------FUNCTION HERE " << (*it)->get_name() << std::endl;
         FunctionAST* f = (*it);
         std::vector<Type *> args_type = f->get_args_type();
         Module* mod = get_module();
@@ -85,6 +84,8 @@ void Main_block::codegen() {
         (*it)->codegen(this);
     }
 
+
+
     ReturnInst::Create(getGlobalContext(), get_block());
 }
 void Structure::add_structure(std::string var_name, Type* t) {
@@ -95,7 +96,7 @@ void Structure::add_structure(std::string var_name, Type* t) {
     this->structures.push_back(s);
 }
 void Structure::codegen(Main_block* mblock) {
-    std::cout << "Creating structure" << std::endl;
+    Debug("Creating structure");
     Module* mod = mblock->get_module();
     FunctionAST* func = mblock->get_main_func();
 
@@ -103,8 +104,6 @@ void Structure::codegen(Main_block* mblock) {
     StructType* structTy;
     std::vector<Type*> structTy_fields;
     for (auto it = structures.begin(); it != structures.end(); it++) {
-        std::cout << (*it).state << "\n";
-
         if (state == (*it).state) {
             structTy_fields.push_back((*it).type);
         }
@@ -115,7 +114,7 @@ void Structure::codegen(Main_block* mblock) {
             FunctionAST* tmp_func = mblock->get_func(state+2);
             std::string struct_name("struct.");
             struct_name.append(tmp_func->get_name());
-            std::cout << struct_name << "\n" ;
+            Debug("struct name", struct_name.c_str());
             structTy = StructType::create(mod->getContext(), struct_name);
             structTy_fields.clear();
             structTy_fields.push_back((*it).type);
@@ -145,7 +144,8 @@ void FunctionAST::add_arg(std::string var, llvm::Type* var_type) {
     if (this->args[var]) {
         Error("Argument invalid. Already assigned");
     }
-    std::cout << "adding var: " << var << " in " << get_name() << std::endl;
+    Debug("In function...", get_name().c_str());
+    Debug("adding var", var.c_str());
     this->args[var] = var_type;
     this->local_var[var] = nullptr;
 }
@@ -164,12 +164,12 @@ void FunctionAST::add_statement(BasicAST* stat) {
     }
 }
 void FunctionAST::add_special(FlowBlock* special, int type) {
-    std::cout << "Creating one block" << std::endl;
+    Debug("Creating one block");
     sblocks->add_block(special, type);
     inc_state();
 }
 void FunctionAST::add_return(Main_block* mblock) {
-    std::cout << "Creating return" << std::endl;
+    Debug("Creating return");
     Module* mod = mblock->get_module();
     BasicBlock* current = mblock->get_block();
     std::string struct_name("struct.");
@@ -178,7 +178,6 @@ void FunctionAST::add_return(Main_block* mblock) {
     if (StructTy) {
         AllocaInst* ptr_ret = new AllocaInst(StructTy, "return", current );
         //Add arguments to call function
-        ///doing ALL WRONG. I HAVE TO PICK FROM THE STRUCTURE THE NAME OF THE ARGUMENTS. FUCK
         mblock->get_struct_vars(get_name());
         auto mask = get_mask();
         auto mask_iterator = mask.begin();
@@ -206,7 +205,7 @@ void FunctionAST::add_return(Main_block* mblock) {
     }
 }
 void FunctionAST::pop_special() {
-    std::cout << "Leaving one block" << std::endl;
+    Debug("Leaving one block");
     dec_state();
     FlowBlock* sb = sblocks->pop_block();
     add_statement(sb);
@@ -254,7 +253,7 @@ void CondAST::add_condition(BasicAST* lhs, int operand, BasicAST* rhs) {
 }
 void CondAST::add_statement(BasicAST* stat) {
     int state = get_state();
-    std::cout << "Adding something in condition!" << std::endl;
+    Debug("Adding something in condition!");
     stat->print();
     if (!state) {
         this->true_statements.push_back(stat);
@@ -281,14 +280,14 @@ llvm::Value* FunctionAST::codegen(Main_block *mblock) {
     BasicBlock *bb = BasicBlock::Create(getGlobalContext(), "entry", func);
     mblock->inc_function();
 
-    std::cout << "Function created: " << this->name << std::endl;
+    Debug("Function created", this->name.c_str());
     this->bb = bb;
     mblock->add_block(bb);
     Builder.SetInsertPoint(bb);
 
     auto my_arg = this->args.begin();
     for (auto argument = func->arg_begin(); argument != func->arg_end(); ++argument, my_arg++) {
-        std::cout << "Argument: " << my_arg->first << std::endl;
+        Debug("Argument", (my_arg->first).c_str());
         Value* x = argument;
         x->setName(my_arg->first);
         this->local_var[my_arg->first] = x;
@@ -312,7 +311,7 @@ llvm::Value* FunctionAST::codegen(Main_block *mblock) {
 }
 //change the value of a variable inside a function
 int FunctionAST::change_var_value(std::string var, llvm::Value* value) {
-    std::cout << "CHANGING " << var << std::endl;
+    Debug("CHANGING var ", var.c_str());
     this->local_var[var] = value;
     return 1;
 }
@@ -320,7 +319,8 @@ int FunctionAST::change_var_value(std::string var, llvm::Value* value) {
 Value* VariableAST::codegen(Main_block* mblock) {
     AllocaInst *alloc;
     FunctionAST *func = mblock->get_func();
-    std::cout << "Creating var: " << this->name <<  " at " << func->get_name() << std::endl;
+    Debug("Creating var ", (this->name).c_str());
+    Debug("at", func->get_name().c_str());
     if (func->get_var(this->name)) {
         Error("Variable already created!*");
     }
@@ -338,7 +338,7 @@ Value* VariableAST::codegen(Main_block* mblock) {
 }
 //generate code when assign a value to variable
 Value* AssignAST::codegen(Main_block* mblock) {
-    std::cout << "Assigning var: " << get_name() << std::endl;
+    Debug("Assigning var", get_name().c_str());
     FunctionAST *func = mblock->get_func();
 
 
@@ -350,7 +350,7 @@ Value* AssignAST::codegen(Main_block* mblock) {
     }
 
     llvm::Value* code = temp;
-    std::cout << "*assigning " << this->get_name() << std::endl;
+    Debug("*assigning ", this->get_name().c_str());
     if (lhs) {
         return new StoreInst(code, lhs, false, mblock->get_block());
         //lhs = code;
@@ -401,7 +401,7 @@ FunctionAST* CallFuncAST::get_func(Main_block* mblock){
 
 //generate code when a function is called
 Value* CallFuncAST::codegen(Main_block* mblock) {
-    std::cout << "-----------------------------Calling function: #" << get_name() << std::endl;
+    Debug("Calling function: ", get_name().c_str());
 
     Module* mod = mblock->get_module();
     Function* func = mod->getFunction(get_name());
@@ -454,7 +454,7 @@ Value* CallFuncAST::codegen(Main_block* mblock) {
         call = CallInst::Create(func, params, "", mblock->get_block());
     }
     else { //call internal functions
-        std::cout << "********************* " << func_block->get_name() << std::endl;
+        Debug("Internal function call", func_block->get_name().c_str());
         FunctionAST* callee_func = get_func(mblock);
         auto mask = callee_func->get_mask();
         auto mask_iterator = mask.begin();
@@ -467,22 +467,21 @@ Value* CallFuncAST::codegen(Main_block* mblock) {
                 auto arg = *(it);
                 BasicAST* tmp;
                 if (isdigit(arg[0])) {
-                    std::cout << "numero" << std::endl;
                     std::string period = ".";
                     std::size_t found = arg.find(period);
                     if (found!=std::string::npos){
-                        std::cout << "float "<< std::endl;
+                        Debug("float");
                         tmp = new FloatAST(std::stof(arg));
                         params.push_back(tmp->codegen(mblock));
                     }
                     else {
-                        std::cout << "integer "<< std::endl;
+                        Debug("integer");
                         tmp = new IntegerAST(std::stoi(arg));
                         params.push_back(tmp->codegen(mblock));
                     }
                 }
                 else {
-                    std::cout << "variavel "<< std::endl;
+                    Debug("string");
                     params.push_back(func_block->get_var(arg));
                 }
             }
@@ -524,17 +523,18 @@ Value* CallFuncAST::codegen(Main_block* mblock) {
 
 //generate code for an integer constant
 Value* IntegerAST::codegen(Main_block* mblock) {
-    std::cout << "Creating integer: " << value << std::endl;
+    Debug("Creating integer", std::to_string(value).c_str());
     return ConstantInt::get(Type::getInt32Ty(getGlobalContext()), value);
 }
 //generate code for a float constant
 Value* FloatAST::codegen(Main_block* mblock) {
+    Debug("Creating float", std::to_string(value).c_str());
     return nullptr;
 }
 
 //generate code for an arithmetic binary expression
 Value* BinopAST::codegen(Main_block* mblock) {
-    std::cout << "Creating Binary operation: " << op << std::endl;
+    Debug("Creating Binary operation: ", std::to_string(op).c_str());
     llvm::Value* lhs = (this->op1)->codegen(mblock);
     llvm::Value* rhs = (this->op2)->codegen(mblock);
     Value* binop;
@@ -552,7 +552,7 @@ Value* BinopAST::codegen(Main_block* mblock) {
 
 //generate code whenever you change the value of a var
 Value* CallVarAST::codegen(Main_block* mblock) {
-    std::cout << "Getting var " << get_var() << " value" << std::endl;
+    Debug("Getting var ", get_var().c_str());
     std::string var_name = get_var();
     FunctionAST *func = mblock->get_func();
     return func->get_var(var_name);
@@ -560,7 +560,7 @@ Value* CallVarAST::codegen(Main_block* mblock) {
 
 //generate return of a function and remove function from the statement list
 Value* EndFunctionAST::codegen(Main_block* mblock) {
-    std::cout << "End of function code" << std::endl;
+    Debug("End of function code");
     FunctionAST *func = mblock->get_func();
     func->add_return(mblock);
     mblock->reset(); //work around, because function was not returning correctly... not the best practice
@@ -573,7 +573,7 @@ Value* EndFunctionAST::codegen(Main_block* mblock) {
 
 //generate condtional statements
 Value* CondAST::codegen(Main_block* mblock) {
-    std::cout << "Creating conditional block" << std::endl;
+    Debug("Creating conditional block");
     llvm::Function* func = mblock->get_func()->get_func();
     llvm::BasicBlock* current_block = mblock->get_block();
     llvm::BasicBlock* cond_true = BasicBlock::Create(getGlobalContext(), "cond_true", func);
@@ -639,7 +639,7 @@ Value* CondAST::codegen(Main_block* mblock) {
     mblock->add_block(merge_cond);
     Builder.SetInsertPoint(merge_cond);
 
-    std::cout << "Leaving conditional block" << std::endl;
+    Debug("Leaving conditional block");
     return nullptr;
 }
 

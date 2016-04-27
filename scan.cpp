@@ -8,7 +8,7 @@ Scan_file::Scan_file(std::string name) {
     create_table();
 }
 Scan_file::~Scan_file(void) {
-    std::cout << "closing file";
+    Debug("closing file");
     myfile->close();
 }
 
@@ -106,15 +106,17 @@ int Scan_file::scan_tok() {
         if (ch == T_LBRACKET && previous.token == T_IDENTIFIER) {
             (*myfile).get(ch);
             if (isdigit(ch)) {
-                ///TODO: array
-                (*myfile).get(ch);
-                (*myfile).get(ch);
+                while (isdigit(ch)) {
+                    IdentifierStr += ch;
+                    (*myfile).get(ch);
+                }
+                assign_attributes(T_ARRAY, IdentifierStr.c_str());
+                return T_ARRAY;
             } else { Error("Invalid array"); }
         }
 
         if (isalpha(ch)) { // identifier: [a-zA-Z][a-zA-Z0-9]*
             IdentifierStr = ch;
-
             while (!isspace(ch)) {
                 (*myfile).get(ch);
                 if (isalnum(ch) || ch == '_')

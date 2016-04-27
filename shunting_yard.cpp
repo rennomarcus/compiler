@@ -98,17 +98,16 @@ Shunting::Shunting(Scan_file *scan) {
 //Debug function
 void Shunting::print() {
     token t;
-    std::cout << "(Shunting yard printing) ";
+    Debug("(Shunting yard printing) ");
     for (auto it = equation.begin(); it != equation.end(); it++) {
         t = *it;
         if (t.token_type == T_INTEGER || t.token_type == T_FLOAT || t.token_type == T_IDENTIFIER) {
-            std::cout << t.value;
+            Debug(t.value.c_str());
         }
         else {
-            std::cout << (char)t.token_type;
+            Debug(std::to_string(t.token_type).c_str());
         }
     }
-    std::cout << std::endl;
 }
 
 std::vector<BasicAST*> Shunting::read() {
@@ -134,7 +133,7 @@ std::vector<BasicAST*> Shunting::read() {
             eq.pop_back();
             BasicAST *op2 = eq.back();
             eq.pop_back();
-            std::cout << "#create bin op" << (char)t.token_type << std::endl;
+            Debug("#create bin op", std::to_string(t.token_type).c_str());
             temp = new BinopAST((char)t.token_type, op1,op2);
             eq.push_back(temp);
         }

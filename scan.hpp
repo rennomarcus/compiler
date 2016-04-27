@@ -57,19 +57,20 @@ using namespace std;
 #define T_ASSIGN 276
 #define T_TRUE 277
 #define T_FALSE 278
+#define T_ARRAY 279
 
-#define F_PUTBOOL 279
-#define F_PUTINTEGER 280
-#define F_PUTFLOAT 281
-#define F_PUTSTRING 282
-#define F_PUTCHAR 283
+#define F_PUTBOOL 280
+#define F_PUTINTEGER 281
+#define F_PUTFLOAT 282
+#define F_PUTSTRING 283
+#define F_PUTCHAR 284
 
 #define T_EOF 349 // code used when at end of file
 #define T_UNKNOWN 350 // token was unrecognized by scanner
 
 #define error 666
 
-#define MAX_RESERVED_KEYS 28
+#define MAX_RESERVED_KEYS 29
 
 struct previous_scan {
     int token;

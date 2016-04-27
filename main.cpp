@@ -38,16 +38,30 @@ llvm::IRBuilder<> Builder(llvm::getGlobalContext());
 int state = 0;
 std::map<char, int> BinopPrecedence;
 int g_line = 1;
+bool debug_on = false;
 
-int main () {
+int main (int argc, char* argv[]) {
     BinopPrecedence['+'] = 1;
     BinopPrecedence['-'] = 1;
     BinopPrecedence['*'] = 2;
     BinopPrecedence['/'] = 2;
     BinopPrecedence['('] = 3;
     BinopPrecedence[')'] = 3;
+    std::string file_name;
+    if (argc < 2) {
+        std::cerr << "Invalid number of arguments. Please, insert the filename to be compiled" << std::endl;
+        exit(-1);
+    }
+    else if (argc == 2) {
+        file_name = argv[1];
+    }
+    else if (argc == 3) {
+        if (strcmp(argv[1],"-d") == 0) {
+            debug_on = true;
+        }
+        file_name = argv[2];
+    }
     //lexer
-    std::string file_name = "test.src";
     Scan_file *scan = new Scan_file(file_name);
     Main_block *module = new Main_block();
 
@@ -59,7 +73,9 @@ int main () {
     }
 
     //codegen
-    std::cout << std::endl << std::endl << std::endl;
+    if (debug_on)
+        std::cout << std::endl << std::endl << std::endl;
+
     module->codegen();
     //module->show_dump();
 
