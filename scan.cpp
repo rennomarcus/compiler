@@ -116,7 +116,7 @@ int Scan_file::scan_tok() {
         }
 
         if (isalpha(ch)) { // identifier: [a-zA-Z][a-zA-Z0-9]*
-            IdentifierStr = ch;
+            IdentifierStr = tolower(ch);
             while (!isspace(ch)) {
                 (*myfile).get(ch);
                 if (isalnum(ch) || ch == '_')

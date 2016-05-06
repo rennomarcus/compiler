@@ -11,6 +11,11 @@ void Main_block::add_var(VariableAST* var) {
     FunctionAST *func = this->functions.back();
     func->add_var(var);
 }
+void Main_block::add_gvar(VariableAST* var) {
+    FunctionAST *func = get_main_func();
+    func->add_var(var);
+}
+
 void Main_block::add_statement(BasicAST* stat) {
     FunctionAST *func = this->functions.back();
     func->add_statement(stat);
@@ -318,20 +323,38 @@ int FunctionAST::change_var_value(std::string var, llvm::Value* value) {
 //allocate memory for a variable
 Value* VariableAST::codegen(Main_block* mblock) {
     AllocaInst *alloc;
+    Type* type;
     FunctionAST *func = mblock->get_func();
     Debug("Creating var ", (this->name).c_str());
     Debug("at", func->get_name().c_str());
-    if (func->get_var(this->name)) {
+
+    Module* mod = mblock->get_module();
+    GlobalVariable* gvar = mod->getGlobalVariable(this->name, true);
+    if (func->get_var(this->name) || gvar) {
         Error("Variable already created!*");
     }
+
     switch(this->var_type) {
         case T_INTEGER:
-            alloc = new AllocaInst(Type::getInt32Ty(getGlobalContext()) , this->name.c_str(), mblock->get_block());
+            type = Type::getInt32Ty(getGlobalContext());
             break;
         case T_FLOAT:
-            alloc = new AllocaInst(Type::getFloatTy(getGlobalContext()) , this->name.c_str(), mblock->get_block());
+            type = Type::getFloatTy(getGlobalContext());
             break;
     }
+
+    if (get_global()) {
+        gvar = new GlobalVariable(/*Module=*/*mod, /*Type=*/type,/*isConstant=*/true,
+                /*Linkage=*/GlobalValue::PrivateLinkage, /*Initializer=*/0,  /*Name=*/this->name );
+
+        Constant *const_val = Constant::getNullValue(type);
+        gvar->setInitializer(const_val);
+
+        func->change_var_value(this->name, gvar);
+        return gvar;
+    }
+    alloc = new AllocaInst(type , this->name.c_str(), mblock->get_block());
+
 
     func->change_var_value(this->name, alloc);
     return alloc;
@@ -555,6 +578,10 @@ Value* CallVarAST::codegen(Main_block* mblock) {
     Debug("Getting var ", get_var().c_str());
     std::string var_name = get_var();
     FunctionAST *func = mblock->get_func();
+    Module* mod = mblock->get_module();
+    GlobalVariable* gvar = mod->getGlobalVariable(var_name, true);
+    if (gvar)
+        return gvar;
     return func->get_var(var_name);
 }
 

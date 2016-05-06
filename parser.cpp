@@ -23,7 +23,7 @@ void parser(Scan_file* scan, Main_block* mblock) {
         case T_PROGRAM:
             HandleProgram(scan, mblock);
             break;
-        case T_INTEGER: case T_FLOAT: case T_STRING:
+        case T_GLOBAL: case T_INTEGER: case T_FLOAT: case T_STRING:
             HandleVariableDeclaration(scan, mblock);
             break;
         case T_PROCEDURE:
@@ -300,6 +300,12 @@ void HandleEnd(Scan_file *scan, Main_block *mblock) {
 //handles variable allocation and variable arguments of function head
 VariableAST* HandleVariableDeclaration(Scan_file *scan, Main_block *mblock) {
     Debug("Create var ");
+    bool is_global = false;
+    if (scan->get_tok() == T_GLOBAL) {
+        scan->scan_tok();
+        is_global = true;
+    }
+
     int type = scan->get_tok();
     if (scan->scan_tok() != T_IDENTIFIER) {
         Error("Missing name for variable");
@@ -311,6 +317,9 @@ VariableAST* HandleVariableDeclaration(Scan_file *scan, Main_block *mblock) {
 
 
     VariableAST *var = new VariableAST(var_name, type);
+    if (is_global)
+        var->set_global();
+
     bool isarray = false;
     int array_size = 0;
     if (scan->scan_tok() == T_ARRAY) {
@@ -322,7 +331,10 @@ VariableAST* HandleVariableDeclaration(Scan_file *scan, Main_block *mblock) {
     //if it is an internal variable add it to the block
     if (scan->get_tok() == T_SEMICOLON) { //go to next token = discard semicolon
         if (!isarray) {
-            mblock->add_var(var);
+            if (!is_global)
+                mblock->add_var(var);
+            else
+                mblock->add_gvar(var);
         }
         else {
             //mblock->add_array(var, array_size);

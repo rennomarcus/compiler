@@ -71,8 +71,11 @@ class CallFuncAST : public BasicAST {
 
 class VariableAST : public BasicAST {
     int var_type;
+    bool is_global;
     std::string name;
     public:
+    bool get_global() { return is_global; }
+    void set_global() { is_global = true; }
     void print() { Debug("(print) Variable", get_name().c_str()); }
     std::string get_name() { return this->name; }
     VariableAST(std::string name, int var_type) : name(name), var_type(var_type) {}
@@ -259,6 +262,7 @@ class Main_block {
     void codegen();
     void show_dump() { mod->dump(); }
     void add_var(VariableAST* var); //add variable to last function inserted
+    void add_gvar(VariableAST* var);
     void add_array();
     void add_func(FunctionAST* func) { functions.push_back(func); }; //add new function to main block
     void add_arg(std::string, llvm::Type*);
