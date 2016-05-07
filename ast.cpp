@@ -2,6 +2,26 @@
 
 using namespace llvm;
 
+Type* typeOf(int type, int array_size) {
+    Type* tmp;
+    switch(type) {
+        case T_INTEGER:
+            tmp = Type::getInt32Ty(getGlobalContext());
+            break;
+        case T_FLOAT:
+            tmp = Type::getFloatTy(getGlobalContext());
+            break;
+        default:
+            tmp = Type::getVoidTy(getGlobalContext());
+    }
+    if (!array_size) {
+        return tmp;
+    }
+    else {
+        return ArrayType::get(tmp, array_size);
+    }
+}
+
 Main_block::Main_block() {
     this->s = new Structure();
     this->function_position = -1;
@@ -333,15 +353,9 @@ Value* VariableAST::codegen(Main_block* mblock) {
     if (func->get_var(this->name) || gvar) {
         Error("Variable already created!*");
     }
+    type = typeOf(this->var_type, get_array());
 
-    switch(this->var_type) {
-        case T_INTEGER:
-            type = Type::getInt32Ty(getGlobalContext());
-            break;
-        case T_FLOAT:
-            type = Type::getFloatTy(getGlobalContext());
-            break;
-    }
+
 
     if (get_global()) {
         gvar = new GlobalVariable(/*Module=*/*mod, /*Type=*/type,/*isConstant=*/false,
@@ -359,11 +373,13 @@ Value* VariableAST::codegen(Main_block* mblock) {
     func->change_var_value(this->name, alloc);
     return alloc;
 }
+
+
 //generate code when assign a value to variable
 Value* AssignAST::codegen(Main_block* mblock) {
     Debug("Assigning var", get_name().c_str());
     FunctionAST *func = mblock->get_func();
-
+    Module* mod = mblock->get_module();
     llvm::Value* lhs = func->get_var(get_name());
     std::vector<BasicAST*> rhs = this->rhs;
     llvm::Value* temp;
@@ -373,14 +389,30 @@ Value* AssignAST::codegen(Main_block* mblock) {
 
     llvm::Value* code = temp;
     Debug("*assigning ", this->get_name().c_str());
+    std::vector<Value*> ptr_indices;
+    if (get_array()) {
+        ConstantInt* const_int32_zero = ConstantInt::get(mod->getContext(), APInt(32, 0, 10));
+        ConstantInt* const_int32 = ConstantInt::get(mod->getContext(), APInt(32, get_array_pos(), 10));
+        ptr_indices.push_back(const_int32_zero);
+        ptr_indices.push_back(const_int32);
+    }
 
     if (lhs) {
+        if (get_array()) {
+            Instruction* ptr_getelement = GetElementPtrInst::Create(lhs, ptr_indices, "", mblock->get_block());
+            return new StoreInst(  code, ptr_getelement, false, mblock->get_block());
+        }
         return new StoreInst(code, lhs, false, mblock->get_block());
     } else {
         Module* mod = mblock->get_module();
         GlobalVariable* gvar = mod->getGlobalVariable(get_name(), true);
-        if (gvar)
+        if (gvar) {
+            if (get_array()) {
+                Instruction* ptr_getelement = GetElementPtrInst::Create(lhs, ptr_indices, "", mblock->get_block());
+                return new StoreInst(  code, ptr_getelement, false, mblock->get_block());
+            }
             return new StoreInst(code, gvar, false, mblock->get_block());
+        }
     }
 
     return nullptr;

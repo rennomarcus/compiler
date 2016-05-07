@@ -198,6 +198,17 @@ void HandleStatement(Scan_file* scan, Main_block* mblock) {
             AssignAST* assign_var = new AssignAST(name, HandleMath(scan, mblock));
             mblock->add_statement(assign_var);
         }
+        if (scan->get_tok() == T_ARRAY) {
+            Debug("#var array assign. Pos: ");
+            int array_size = std::stoi(scan->get_value());
+            if (scan->scan_tok() == T_ASSIGN) {
+                AssignAST* assign_var = new AssignAST(name, array_size, HandleMath(scan, mblock));
+                assign_var->set_array(true);
+                mblock->add_statement(assign_var);
+            } else {
+                Error("Invalid assignment");
+            }
+        }
     }
 }
 //type == 1 for print, ==0 for read...
@@ -341,20 +352,17 @@ VariableAST* HandleVariableDeclaration(Scan_file *scan, Main_block *mblock) {
     if (scan->scan_tok() == T_ARRAY) {
         isarray = true;
         array_size = std::stoi(scan->get_value());
+        var->set_array(array_size);
         Debug("ARRAY size", std::to_string(array_size).c_str());
         scan->scan_tok();
     }
     //if it is an internal variable add it to the block
     if (scan->get_tok() == T_SEMICOLON) { //go to next token = discard semicolon
-        if (!isarray) {
-            if (!is_global)
-                mblock->add_var(var);
-            else
-                mblock->add_gvar(var);
-        }
-        else {
-            //mblock->add_array(var, array_size);
-        }
+        if (!is_global)
+            mblock->add_var(var);
+        else
+            mblock->add_gvar(var);
+
         return var;
     }
     //otherwise,  it is an argument of a function. add as an argument to the function

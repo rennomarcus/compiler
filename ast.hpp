@@ -73,12 +73,17 @@ class VariableAST : public BasicAST {
     int var_type;
     bool is_global;
     std::string name;
+    int array_size;
     public:
+
     bool get_global() { return is_global; }
+    int get_array() { return array_size; }
     void set_global() { is_global = true; }
+    void set_array(int n) { array_size = n; }
+
     void print() { Debug("(print) Variable", get_name().c_str()); }
     std::string get_name() { return this->name; }
-    VariableAST(std::string name, int var_type) : name(name), var_type(var_type) {}
+    VariableAST(std::string name, int var_type) : name(name), var_type(var_type), array_size(0) {}
     llvm::Value* codegen(Main_block*);
 
 };
@@ -86,10 +91,15 @@ class VariableAST : public BasicAST {
 class AssignAST : public BasicAST {
     std::string var;
     std::vector<BasicAST*> rhs;
-
+    bool isarray;
+    int array_pos;
     public:
+    bool get_array() {  return isarray; }
+    int get_array_pos() { return array_pos; }
+    void set_array(bool val) { isarray = val; }
     void print() { Debug("(print)Assigning var", this->get_name().c_str()); }
-    AssignAST(std::string var_name, std::vector<BasicAST*> rhs) : var(var_name), rhs(rhs) {}
+    AssignAST(std::string var_name, std::vector<BasicAST*> rhs) : var(var_name), rhs(rhs) { set_array(false); }
+    AssignAST(std::string var_name, int pos, std::vector<BasicAST*> rhs) : var(var_name), rhs(rhs), array_pos(pos) { set_array(true); }
     std::string get_name() { return this->var; }
     llvm::Value* codegen(Main_block*);
 };

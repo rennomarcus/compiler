@@ -41,7 +41,7 @@ Shunting::Shunting(Scan_file *scan) {
         t.token_type = tok;
         t.value = scan->get_value();
         //If the incoming symbols is an operand, print it..
-        if (tok == T_INTEGER || tok == T_FLOAT || tok == T_IDENTIFIER) {
+        if (tok == T_INTEGER || tok == T_FLOAT || tok == T_IDENTIFIER || tok == T_ARRAY) {
             this->equation.push_back(t);
         }
         else {
@@ -121,6 +121,9 @@ std::vector<BasicAST*> Shunting::read() {
             eq.push_back(temp);
         }
         else if (t.token_type == T_IDENTIFIER) {
+            if (it+1 != equation.end() && (*(it+1)).token_type == T_ARRAY)
+                it++;
+            ///fix this
             temp = new CallVarAST(t.value);
             eq.push_back(temp);
         }
