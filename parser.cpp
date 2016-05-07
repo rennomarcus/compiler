@@ -39,12 +39,28 @@ void parser(Scan_file* scan, Main_block* mblock) {
         case T_ELSE:
             HandleElseBlock(scan, mblock);
             break;
+        case T_FOR:
+            HandleForBlock(scan, mblock);
         default:
             HandleTopLevelExpression(scan, mblock);
             break;
 
     }
 
+}
+
+
+//check (if, then, else) blocks
+void HandleForBlock(Scan_file* scan, Main_block* mblock) {
+    CondAST* cond;
+    Debug("If block");
+    if (scan->get_tok() == T_IF) {
+        scan->scan_tok();
+        if (scan->get_tok() == T_LPAREN) {
+            cond = HandleIfCond(scan, mblock);
+            mblock->add_special(cond, 1);
+        }
+    }
 }
 
 //check (if, then, else) blocks

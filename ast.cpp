@@ -344,8 +344,8 @@ Value* VariableAST::codegen(Main_block* mblock) {
     }
 
     if (get_global()) {
-        gvar = new GlobalVariable(/*Module=*/*mod, /*Type=*/type,/*isConstant=*/true,
-                /*Linkage=*/GlobalValue::PrivateLinkage, /*Initializer=*/0,  /*Name=*/this->name );
+        gvar = new GlobalVariable(/*Module=*/*mod, /*Type=*/type,/*isConstant=*/false,
+                /*Linkage=*/GlobalValue::ExternalLinkage, /*Initializer=*/0,  /*Name=*/this->name );
 
         Constant *const_val = Constant::getNullValue(type);
         gvar->setInitializer(const_val);
@@ -364,7 +364,6 @@ Value* AssignAST::codegen(Main_block* mblock) {
     Debug("Assigning var", get_name().c_str());
     FunctionAST *func = mblock->get_func();
 
-
     llvm::Value* lhs = func->get_var(get_name());
     std::vector<BasicAST*> rhs = this->rhs;
     llvm::Value* temp;
@@ -374,9 +373,14 @@ Value* AssignAST::codegen(Main_block* mblock) {
 
     llvm::Value* code = temp;
     Debug("*assigning ", this->get_name().c_str());
+
     if (lhs) {
         return new StoreInst(code, lhs, false, mblock->get_block());
-        //lhs = code;
+    } else {
+        Module* mod = mblock->get_module();
+        GlobalVariable* gvar = mod->getGlobalVariable(get_name(), true);
+        if (gvar)
+            return new StoreInst(code, gvar, false, mblock->get_block());
     }
 
     return nullptr;
@@ -505,7 +509,9 @@ Value* CallFuncAST::codegen(Main_block* mblock) {
                 }
                 else {
                     Debug("string");
-                    params.push_back(func_block->get_var(arg));
+                    Value* val = func_block->get_var(arg);
+                    LoadInst* val_load = new LoadInst( val , "", false, mblock->get_block());
+                    params.push_back(val_load);
                 }
             }
         }
@@ -515,31 +521,36 @@ Value* CallFuncAST::codegen(Main_block* mblock) {
         Type* StructTy = mod->getTypeByName(struct_name);
         if (!StructTy)  {
             StructTy = Type::getVoidTy(getGlobalContext());
+            call = CallInst::Create(func, params, "", mblock->get_block());
         }
-        AllocaInst* ptr_struct = new AllocaInst(StructTy, "ret_structure", mblock->get_block());
-        call = CallInst::Create(func, params, "", mblock->get_block());
-        StoreInst* store_func_return = new StoreInst(call, ptr_struct, "function_return", mblock->get_block());
-
-        //load values of the return structure to the function which called this function
-        mask = callee_func->get_mask();
-        mask_iterator = mask.begin();
-        count_mask = 0;
-        int count_getelement = 0;
-        args = get_args();
-        ConstantInt* const_int32_zero = ConstantInt::get(mod->getContext(), APInt(32, 0, 10));
-        for (auto it = args.begin(); it != args.end(); it++, count_mask++) {
-            if (!*(mask_iterator + count_mask)) {
-                auto arg = (*it);
-                ConstantInt* const_int32 = ConstantInt::get(mod->getContext(), APInt(32, count_getelement, 10));
-                std::vector<Value*> ptr_indices;
-                ptr_indices.push_back(const_int32_zero);
-                ptr_indices.push_back(const_int32);
-                Instruction* ptr_getelement = GetElementPtrInst::Create(ptr_struct, ptr_indices, "", mblock->get_block());
-                LoadInst* load_struct = new LoadInst(ptr_getelement, "element_func", false, mblock->get_block());
-                StoreInst* void_26 = new StoreInst(  load_struct, func_block->get_var(arg), false, mblock->get_block());
-                count_getelement++;
+        else {
+            AllocaInst* ptr_struct = new AllocaInst(StructTy, "ret_structure", mblock->get_block());
+            call = CallInst::Create(func, params, "", mblock->get_block());
+            StoreInst* store_func_return = new StoreInst(call, ptr_struct, "function_return", mblock->get_block());
+            //load values of the return structure to the function which called this function
+            mask = callee_func->get_mask();
+            mask_iterator = mask.begin();
+            count_mask = 0;
+            int count_getelement = 0;
+            args = get_args();
+            ConstantInt* const_int32_zero = ConstantInt::get(mod->getContext(), APInt(32, 0, 10));
+            for (auto it = args.begin(); it != args.end(); it++, count_mask++) {
+                if (!*(mask_iterator + count_mask)) {
+                    auto arg = (*it);
+                    ConstantInt* const_int32 = ConstantInt::get(mod->getContext(), APInt(32, count_getelement, 10));
+                    std::vector<Value*> ptr_indices;
+                    ptr_indices.push_back(const_int32_zero);
+                    ptr_indices.push_back(const_int32);
+                    Instruction* ptr_getelement = GetElementPtrInst::Create(ptr_struct, ptr_indices, "", mblock->get_block());
+                    LoadInst* load_struct = new LoadInst(ptr_getelement, "element_func", false, mblock->get_block());
+                    StoreInst* void_26 = new StoreInst(  load_struct, func_block->get_var(arg), false, mblock->get_block());
+                    count_getelement++;
+                }
             }
         }
+
+
+
     }
     return nullptr;
 }
@@ -580,9 +591,15 @@ Value* CallVarAST::codegen(Main_block* mblock) {
     FunctionAST *func = mblock->get_func();
     Module* mod = mblock->get_module();
     GlobalVariable* gvar = mod->getGlobalVariable(var_name, true);
-    if (gvar)
-        return gvar;
-    return func->get_var(var_name);
+    Value* val;
+    if (gvar) {
+        val = gvar;
+    } else {
+        val = func->get_var(var_name);
+    }
+
+    LoadInst* val_load = new LoadInst( val , "", false, mblock->get_block());
+    return val_load;
 }
 
 //generate return of a function and remove function from the statement list
