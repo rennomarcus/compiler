@@ -617,13 +617,13 @@ Value* BinopAST::codegen(Main_block* mblock) {
     llvm::Value* rhs = (this->op2)->codegen(mblock);
     Value* binop;
     if (this->op == '+')
-        binop = BinaryOperator::Create(Instruction::Add, lhs, rhs, "add", mblock->get_block());
+        binop = BinaryOperator::Create(Instruction::Add, rhs, lhs, "add", mblock->get_block());
     else if (this->op == '-')
-        binop = BinaryOperator::Create(Instruction::Sub, lhs, rhs, "sub", mblock->get_block());
+        binop = BinaryOperator::Create(Instruction::Sub, rhs, lhs, "sub", mblock->get_block());
     else if (this->op == '*')
-        binop = BinaryOperator::Create(Instruction::Mul, lhs, rhs, "mul", mblock->get_block());
+        binop = BinaryOperator::Create(Instruction::Mul, rhs, lhs, "mul", mblock->get_block());
     else if (this->op == '/')
-        binop = BinaryOperator::Create(Instruction::SDiv, lhs, rhs, "div", mblock->get_block());
+        binop = BinaryOperator::Create(Instruction::SDiv, rhs, lhs, "div", mblock->get_block());
 
     return binop;
 }

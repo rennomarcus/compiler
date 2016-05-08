@@ -102,7 +102,26 @@ int Scan_file::scan_tok() {
             assign_attributes(T_PERIOD, ".");
             return T_PERIOD;
         }
-
+        if (ch == '-') {
+            (*myfile).get(ch);
+            if (isdigit(ch)) {
+                (*myfile).putback(ch);
+                if (previous.token == T_INTEGER || previous.token == T_FLOAT || previous.token == T_IDENTIFIER) {
+                    ch = '-';
+                    this->token = ch;
+                    assign_attributes(ch, "" + ch);
+                    return ch;
+                }
+                ch = '-';
+            }
+            else {
+                (*myfile).putback(ch);
+                ch = '-';
+                this->token = ch;
+                assign_attributes(ch, "" + ch);
+                return ch;
+            }
+        }
         if (ch == T_LBRACKET && previous.token == T_IDENTIFIER) {
             (*myfile).get(ch);
             if (isdigit(ch)) {
@@ -115,7 +134,7 @@ int Scan_file::scan_tok() {
             } else { Error("Invalid array"); }
         }
 
-        if (isalpha(ch) && ch != '-') { // identifier: [a-zA-Z][a-zA-Z0-9]*
+        if (isalpha(ch)) { // identifier: [a-zA-Z][a-zA-Z0-9]*
             IdentifierStr = tolower(ch);
             while (!isspace(ch)) {
                 (*myfile).get(ch);
