@@ -47,7 +47,8 @@ class CallFuncAST : public BasicAST {
     std::string var;
     std::vector<std::string> args;
     std::vector<FunctionAST*> functions;
-
+    int array_pos;
+    bool isarray;
     int external;
     public:
     void print() { Debug("(print) CallFunc", this->callee.c_str()); }
@@ -57,15 +58,19 @@ class CallFuncAST : public BasicAST {
     void set_message(int);
     void set_name(std::string name) { this->callee = name; }
     void set_var(std::string var) { this->var = var; }
+    void set_array(bool val) { isarray = val; }
+    void set_array_pos(int n) { array_pos = n; }
 
+    bool get_array() { return isarray; }
+    bool get_array_pos() { return array_pos; }
     std::string get_name() { return callee; }
     std::string get_message() { return message; }
     std::string get_gvar() { return g_var; }
     std::string get_var() { return var; }
     std::vector<std::string> get_args() { return this->args; }
     FunctionAST* get_func(Main_block*);
-    CallFuncAST() { external = 0; }
-    CallFuncAST(std::string name) : callee(name) { external = 0; }
+    CallFuncAST() { external = 0; set_array(false); }
+    CallFuncAST(std::string name) : callee(name) { external = 0; set_array(false); }
     llvm::Value* codegen(Main_block*);
 };
 
@@ -108,11 +113,17 @@ class AssignAST : public BasicAST {
 
 class CallVarAST : public BasicAST {
     std::string var;
+    bool isarray;
+    int array_pos;
     public:
     std::string get_var() { return this->var; }
+    bool get_array() {  return isarray; }
+    int get_array_pos() { return array_pos; }
+    void set_array(bool val) { isarray = val; }
+    void set_array_pos(int val) { array_pos = val; }
 
     void print() { Debug("(print)Calling var", this->var.c_str()); }
-    CallVarAST(std::string var_name) : var(var_name) {}
+    CallVarAST(std::string var_name) : var(var_name) { set_array(false); }
     llvm::Value* codegen(Main_block*);
 };
 
@@ -175,8 +186,12 @@ class CondAST : public FlowBlock {
 };
 
 class EndFunctionAST : public BasicAST {
+    bool return_statement;
     public:
-    EndFunctionAST() { Debug("(print) end function"); }
+    EndFunctionAST() { return_statement = false; Debug("(print) end function"); }
+    EndFunctionAST(bool val) { return_statement = val; Debug("(print) end function using return"); }
+
+    bool get_return() { return return_statement; }
     void print() { }
     llvm::Value* codegen(Main_block *);
 };
@@ -223,7 +238,7 @@ class FunctionAST : public BasicAST {
 
     int change_var_value(std::string, llvm::Value*);
     void change_state() { sblocks->change_state(); };
-
+    void change_bb(llvm::BasicBlock* b) { bb = b; }
     void set_func(llvm::Function* f) { this->func = f; }
     std::string get_name() { return this->name; }
     std::vector<llvm::Type *> get_args_type();

@@ -121,10 +121,13 @@ std::vector<BasicAST*> Shunting::read() {
             eq.push_back(temp);
         }
         else if (t.token_type == T_IDENTIFIER) {
-            if (it+1 != equation.end() && (*(it+1)).token_type == T_ARRAY)
+            CallVarAST* var = new CallVarAST(t.value);
+            if (it+1 != equation.end() && (*(it+1)).token_type == T_ARRAY) {
                 it++;
-            ///fix this
-            temp = new CallVarAST(t.value);
+                var->set_array(true);
+                var->set_array_pos(std::stoi((*it).value));
+            }
+            temp = var;
             eq.push_back(temp);
         }
         else if (t.token_type == T_FLOAT) {

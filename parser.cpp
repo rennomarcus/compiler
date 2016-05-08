@@ -41,6 +41,10 @@ void parser(Scan_file* scan, Main_block* mblock) {
             break;
         case T_FOR:
             HandleForBlock(scan, mblock);
+            break;
+        case T_RETURN:
+            HandleReturn(scan, mblock);
+            break;
         default:
             HandleTopLevelExpression(scan, mblock);
             break;
@@ -49,16 +53,24 @@ void parser(Scan_file* scan, Main_block* mblock) {
 
 }
 
+void HandleReturn(Scan_file* scan, Main_block* mblock) {
+    Debug(">>>>>>>>>>>>>>>>>>>>>>>>> Im here");
+    if (scan->scan_tok() == T_SEMICOLON) {
+        EndFunctionAST* endfunc = new EndFunctionAST(true);
+        mblock->add_statement(endfunc);
+    } else {
+        Error("Missing semicolon after return.");
+    }
+}
 
 //check (if, then, else) blocks
 void HandleForBlock(Scan_file* scan, Main_block* mblock) {
     CondAST* cond;
     Debug("If block");
-    if (scan->get_tok() == T_IF) {
-        scan->scan_tok();
-        if (scan->get_tok() == T_LPAREN) {
-            cond = HandleIfCond(scan, mblock);
-            mblock->add_special(cond, 1);
+    if (scan->get_tok() == T_FOR) {
+
+        if (scan->scan_tok() == T_LPAREN) {
+
         }
     }
 }
@@ -85,7 +97,7 @@ CondAST* HandleIfCond(Scan_file* scan, Main_block* mblock) {
     std::string value = scan->get_value();
     CondAST* cond = new CondAST();
     if (scan->scan_tok() == T_RPAREN) {
-        if (tok1 == T_TRUE) {
+        if (tok1 != T_FALSE || value.compare("0") != 0) {
             //create cond to compareto not 0
             IntegerAST* lhs = new IntegerAST(1);
             IntegerAST* rhs = new IntegerAST(1);
@@ -225,6 +237,10 @@ void setExternalFunction(Scan_file* scan, Main_block* mblock, CallFuncAST* func,
         Error("Invalid function call");
     func->set_message(value);
     func->set_var(scan->get_value());
+    if (scan->scan_tok() == T_ARRAY) {
+        func->set_array(true);
+        func->set_array_pos(std::stoi(scan->get_value()));
+    }
     mblock->add_statement(func);
 }
 void ExternalFunctions(Scan_file* scan, Main_block* mblock) {

@@ -11,6 +11,7 @@
 void HandleProgram(Scan_file *, Main_block *);
 void HandleFunction(Scan_file *, Main_block *);
 void HandleEnd(Scan_file *, Main_block*);
+void HandleReturn(Scan_file *, Main_block*);
 void HandleTopLevelExpression(Scan_file*, Main_block*);
 void HandleStatement(Scan_file*, Main_block*);
 void HandleIfBlock(Scan_file*, Main_block*);

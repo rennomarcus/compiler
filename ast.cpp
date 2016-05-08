@@ -505,12 +505,24 @@ Value* CallFuncAST::codegen(Main_block* mblock) {
             params.push_back(val);
         }
         else {
+            std::vector<Value*> ptr_indices;
             Value* val = func_block->get_var(get_var());
-            LoadInst* val_load = new LoadInst( val , "", false, mblock->get_block());
+            LoadInst* val_load;
+            if (get_array()) {
+                ConstantInt* const_int32_zero = ConstantInt::get(mod->getContext(), APInt(32, 0, 10));
+                ConstantInt* const_int32 = ConstantInt::get(mod->getContext(), APInt(32, get_array_pos(), 10));
+                ptr_indices.push_back(const_int32_zero);
+                ptr_indices.push_back(const_int32);
+                Instruction* ptr_getelement = GetElementPtrInst::Create(val, ptr_indices, "", mblock->get_block());
+                val_load = new LoadInst(ptr_getelement, "array_element", false, mblock->get_block());
+            } else {
+                val_load = new LoadInst( val , "", false, mblock->get_block());
+            }
+
             params.push_back(val_load);
         }
-
         call = CallInst::Create(func, params, "", mblock->get_block());
+
     }
     else { //call internal functions
         Debug("Internal function call", func_block->get_name().c_str());
@@ -639,11 +651,19 @@ Value* EndFunctionAST::codegen(Main_block* mblock) {
     Debug("End of function code");
     FunctionAST *func = mblock->get_func();
     func->add_return(mblock);
-    mblock->reset(); //work around, because function was not returning correctly... not the best practice
+    if (!get_return()) {
+        mblock->reset(); //work around, because function was not returning correctly... not the best practice
 
-    mblock->pop_block();
+        mblock->pop_block();
+    }
 
     Builder.SetInsertPoint(mblock->get_block());
+    if (get_return()) {
+        llvm::BasicBlock* ret = BasicBlock::Create(getGlobalContext(), "not_ret", func->get_func());
+        mblock->pop_block();
+        mblock->add_block(ret);
+        Builder.SetInsertPoint(ret);
+    }
     return nullptr;
 }
 

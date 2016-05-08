@@ -115,7 +115,7 @@ int Scan_file::scan_tok() {
             } else { Error("Invalid array"); }
         }
 
-        if (isalpha(ch)) { // identifier: [a-zA-Z][a-zA-Z0-9]*
+        if (isalpha(ch) && ch != '-') { // identifier: [a-zA-Z][a-zA-Z0-9]*
             IdentifierStr = tolower(ch);
             while (!isspace(ch)) {
                 (*myfile).get(ch);
@@ -130,7 +130,7 @@ int Scan_file::scan_tok() {
             return this->token;
         }
 
-        if (isdigit(ch) || ch == '.') {   // Number: [0-9.]+
+        if (isdigit(ch) || ch == '.' || ch == '-') {   // Number: [0-9.]+
             std::string NumStr;
             std::string period = ".";
             do {
