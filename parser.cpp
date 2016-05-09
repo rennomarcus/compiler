@@ -97,7 +97,12 @@ CondAST* HandleIfCond(Scan_file* scan, Main_block* mblock) {
     std::string value = scan->get_value();
     CondAST* cond = new CondAST();
     if (scan->scan_tok() == T_RPAREN) {
-        if (tok1 != T_FALSE || value.compare("0") != 0) {
+        if (tok1 == T_FALSE || value.compare("0") == 0) {
+            IntegerAST* lhs = new IntegerAST(1);
+            IntegerAST* rhs = new IntegerAST(0);
+            cond->add_condition(lhs, COND_EQUAL, rhs);
+        }
+        else if (tok1 == T_TRUE || value.compare("0") != 0) {
             //create cond to compareto not 0
             IntegerAST* lhs = new IntegerAST(1);
             IntegerAST* rhs = new IntegerAST(1);
@@ -190,6 +195,14 @@ std::vector<BasicAST*> HandleMath(Scan_file* scan, Main_block* mblock) {
     return equation->read();
 }
 
+//"message"
+StringAST* HandleString(Scan_file* scan, Main_block* mblock) {
+    StringAST* message = new StringAST(scan->get_value());
+    if (scan->scan_tok() != T_SEMICOLON)
+        Error("Missing ';' after string");
+    return message;
+}
+
 void HandleStatement(Scan_file* scan, Main_block* mblock) {
     Debug("handle expr");
     if (scan->get_tok() == T_IDENTIFIER) {
@@ -207,13 +220,20 @@ void HandleStatement(Scan_file* scan, Main_block* mblock) {
         }
         if (scan->get_tok() == T_ASSIGN) {
             Debug("#var assigning");
-            AssignAST* assign_var = new AssignAST(name, HandleMath(scan, mblock));
+            AssignAST* assign_var;
+            if (scan->scan_tok() == T_STRING_MESSAGE) {
+                assign_var = new AssignAST(name, HandleString(scan, mblock));
+
+            } else {
+                assign_var = new AssignAST(name, HandleMath(scan, mblock));
+            }
             mblock->add_statement(assign_var);
         }
         if (scan->get_tok() == T_ARRAY) {
             Debug("#var array assign. Pos: ");
             int array_size = std::stoi(scan->get_value());
             if (scan->scan_tok() == T_ASSIGN) {
+                scan->scan_tok();
                 AssignAST* assign_var = new AssignAST(name, array_size, HandleMath(scan, mblock));
                 assign_var->set_array(true);
                 mblock->add_statement(assign_var);
@@ -233,8 +253,11 @@ void setExternalFunction(Scan_file* scan, Main_block* mblock, CallFuncAST* func,
     int value = scan->get_tok();
     if (scan->scan_tok() != T_LPAREN)
         Error("Invalid function call");
-    if (scan->scan_tok() != T_IDENTIFIER && scan->get_tok() != T_INTEGER && scan->get_tok() != T_FLOAT)
+    if (scan->scan_tok() != T_IDENTIFIER && scan->get_tok() != T_INTEGER && scan->get_tok() != T_FLOAT && scan->get_tok() != '"')
         Error("Invalid function call");
+    if (scan->get_tok() == '"') {
+        Debug("==================Constant string");
+    }
     func->set_message(value);
     func->set_var(scan->get_value());
     if (scan->scan_tok() == T_ARRAY) {
@@ -351,6 +374,7 @@ VariableAST* HandleVariableDeclaration(Scan_file *scan, Main_block *mblock) {
 
     int type = scan->get_tok();
     if (scan->scan_tok() != T_IDENTIFIER) {
+        std::cout << scan->get_tok() << std::endl;
         Error("Missing name for variable");
         return nullptr;
     }
@@ -360,6 +384,11 @@ VariableAST* HandleVariableDeclaration(Scan_file *scan, Main_block *mblock) {
 
 
     VariableAST *var = new VariableAST(var_name, type);
+    if (type == T_STRING) {
+        var->set_array(true);
+        var->set_array_pos(255);
+    }
+
     if (is_global)
         var->set_global();
 
@@ -368,7 +397,8 @@ VariableAST* HandleVariableDeclaration(Scan_file *scan, Main_block *mblock) {
     if (scan->scan_tok() == T_ARRAY) {
         isarray = true;
         array_size = std::stoi(scan->get_value());
-        var->set_array(array_size);
+        var->set_array(true);
+        var->set_array_pos(array_size);
         Debug("ARRAY size", std::to_string(array_size).c_str());
         scan->scan_tok();
     }

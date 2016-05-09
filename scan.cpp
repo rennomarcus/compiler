@@ -133,7 +133,16 @@ int Scan_file::scan_tok() {
                 return T_ARRAY;
             } else { Error("Invalid array"); }
         }
-
+        if (ch == '"') {
+            std::string message = "";
+            (*myfile).get(ch);
+            while(ch != '"') {
+                message += ch;
+                (*myfile).get(ch);
+            }
+            assign_attributes(T_STRING_MESSAGE, message);
+            return T_STRING_MESSAGE;
+        }
         if (isalpha(ch)) { // identifier: [a-zA-Z][a-zA-Z0-9]*
             IdentifierStr = tolower(ch);
             while (!isspace(ch)) {

@@ -40,6 +40,16 @@ class IntegerAST : public BasicAST {
     llvm::Value* codegen(Main_block* mblock);
 };
 
+class StringAST : public BasicAST {
+    std::string value;
+
+    public:
+    std::string get_value() { return value; }
+    void print() { Debug("(print) String ",this->value.c_str()); }
+    StringAST(std::string v) : value(v) {}
+    llvm::Value* codegen(Main_block* mblock);
+};
+
 class CallFuncAST : public BasicAST {
     std::string callee;
     std::string message;
@@ -78,17 +88,20 @@ class VariableAST : public BasicAST {
     int var_type;
     bool is_global;
     std::string name;
+    bool isarray;
     int array_size;
     public:
 
     bool get_global() { return is_global; }
-    int get_array() { return array_size; }
+    int get_array() { return isarray; }
+    int get_array_pos() { return array_size; }
     void set_global() { is_global = true; }
-    void set_array(int n) { array_size = n; }
+    void set_array(bool v) { isarray = v; }
+    void set_array_pos(int n) { array_size = n; }
 
     void print() { Debug("(print) Variable", get_name().c_str()); }
     std::string get_name() { return this->name; }
-    VariableAST(std::string name, int var_type) : name(name), var_type(var_type), array_size(0) {}
+    VariableAST(std::string name, int var_type) : name(name), var_type(var_type), isarray(false) {}
     llvm::Value* codegen(Main_block*);
 
 };
@@ -98,13 +111,22 @@ class AssignAST : public BasicAST {
     std::vector<BasicAST*> rhs;
     bool isarray;
     int array_pos;
+    bool isstring;
+    StringAST* var_string;
     public:
+    StringAST* get_string() { return var_string; }
     bool get_array() {  return isarray; }
     int get_array_pos() { return array_pos; }
+    bool is_string() { return isstring; }
     void set_array(bool val) { isarray = val; }
+    void set_string(bool val) { isstring = val; }
     void print() { Debug("(print)Assigning var", this->get_name().c_str()); }
-    AssignAST(std::string var_name, std::vector<BasicAST*> rhs) : var(var_name), rhs(rhs) { set_array(false); }
-    AssignAST(std::string var_name, int pos, std::vector<BasicAST*> rhs) : var(var_name), rhs(rhs), array_pos(pos) { set_array(true); }
+
+    llvm::Value* string_var(Main_block*, std::string);
+
+    AssignAST(std::string var_name, std::vector<BasicAST*> rhs) : var(var_name), rhs(rhs) { set_array(false); set_string(false); }
+    AssignAST(std::string var_name, int pos, std::vector<BasicAST*> rhs) : var(var_name), rhs(rhs), array_pos(pos) { set_array(true); set_string(false); }
+    AssignAST(std::string var_name, StringAST* s) : var(var_name), var_string(s) { set_string(true);  }
     std::string get_name() { return this->var; }
     llvm::Value* codegen(Main_block*);
 };

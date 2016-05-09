@@ -22,6 +22,8 @@ void HandleForBlock(Scan_file*, Main_block*);
 VariableAST* HandleVariableDeclaration(Scan_file *, Main_block *);
 void parser(Scan_file *, Main_block *);
 
+std::vector<BasicAST*> HandleMath(Scan_file*, Main_block*);
+StringAST* HandleString(Scan_file*, Main_block*);
 
 void ExternalFunctions(Scan_file*, Main_block*);
 

@@ -65,6 +65,8 @@ using namespace std;
 #define F_PUTSTRING 283
 #define F_PUTCHAR 284
 
+#define T_STRING_MESSAGE 285
+
 #define T_EOF 349 // code used when at end of file
 #define T_UNKNOWN 350 // token was unrecognized by scanner
 

@@ -35,7 +35,7 @@ Shunting::pop_operator() {
 Shunting::Shunting(Scan_file *scan) {
     int tok;
     set_parenthesis(0);
-    while ((tok = scan->scan_tok()) != T_SEMICOLON) {
+    while (scan->get_tok() != T_SEMICOLON) {
         int tok = scan->get_tok();
         token t;
         t.token_type = tok;
@@ -85,6 +85,7 @@ Shunting::Shunting(Scan_file *scan) {
                 }
             }
         }
+        scan->scan_tok();
     }
     while (!this->operators.empty()) {
         token temp;
