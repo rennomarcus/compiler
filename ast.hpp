@@ -53,16 +53,20 @@ class StringAST : public BasicAST {
 class CallFuncAST : public BasicAST {
     std::string callee;
     std::string message;
+    std::string string_message;
     std::string g_var;
     std::string var;
     std::vector<std::string> args;
+    std::vector<BasicAST*> real_args;
     std::vector<FunctionAST*> functions;
     int array_pos;
     bool isarray;
+    bool has_string;
     int external;
     public:
     void print() { Debug("(print) CallFunc", this->callee.c_str()); }
     void add_arg(std::string arg) { args.push_back(arg); }
+    void add_rarg(BasicAST* arg) { real_args.push_back(arg); }
     int get_external() { return external; }
     void set_external() { external = 1; }
     void set_message(int);
@@ -70,6 +74,7 @@ class CallFuncAST : public BasicAST {
     void set_var(std::string var) { this->var = var; }
     void set_array(bool val) { isarray = val; }
     void set_array_pos(int n) { array_pos = n; }
+    void set_string_message(std::string s) { string_message = s; has_string = true; }
 
     bool get_array() { return isarray; }
     bool get_array_pos() { return array_pos; }
@@ -79,8 +84,10 @@ class CallFuncAST : public BasicAST {
     std::string get_var() { return var; }
     std::vector<std::string> get_args() { return this->args; }
     FunctionAST* get_func(Main_block*);
-    CallFuncAST() { external = 0; set_array(false); }
-    CallFuncAST(std::string name) : callee(name) { external = 0; set_array(false); }
+    std::string get_string_message() { return string_message; }
+
+    CallFuncAST() { external = 0; set_array(false); has_string = false; }
+    CallFuncAST(std::string name) : callee(name) { external = 0; set_array(false); has_string = false; }
     llvm::Value* codegen(Main_block*);
 };
 

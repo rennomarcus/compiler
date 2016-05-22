@@ -394,8 +394,6 @@ Value* AssignAST::string_var(Main_block* mblock, std::string var_name) {
         func->change_var_value(var_name, cast1);
     }
 
-    else
-        gvar->setInitializer(const_array);
 
     return store_value;
 }
@@ -470,6 +468,13 @@ void CallFuncAST::set_message(int type) {
             message = "%s\x0A";
             this->g_var = "string";
             break;
+        case F_GETINTEGER:
+            message = "%d";
+            this->g_var = "integer";
+            break;
+        case F_GETSTRING:
+            message = "%s";
+            this->g_var = "string";
     }
     this->message = message;
 }
@@ -487,6 +492,20 @@ FunctionAST* CallFuncAST::get_func(Main_block* mblock){
     return nullptr;
 }
 
+void call_malloc(Module* mod) {
+
+    PointerType* PointerTy = PointerType::get(IntegerType::get(mod->getContext(), 8), 0);
+    std::vector<Type*>FuncTy_args;
+
+    FuncTy_args.push_back(IntegerType::get(mod->getContext(), 64));
+    FunctionType* FuncTy = FunctionType::get(/*Result=*/PointerTy,/*Params=*/FuncTy_args,/*isVarArg=*/false);
+
+    Function* func_malloc = mod->getFunction("malloc");
+    if (!func_malloc) {
+        func_malloc = Function::Create(/*Type=*/FuncTy,/*Linkage=*/GlobalValue::ExternalLinkage,/*Name=*/"malloc", mod); // (external, no body)
+        func_malloc->setCallingConv(CallingConv::C);
+    }
+}
 //generate code when a function is called
 Value* CallFuncAST::codegen(Main_block* mblock) {
     Debug("Calling function: ", get_name().c_str());
@@ -508,11 +527,30 @@ Value* CallFuncAST::codegen(Main_block* mblock) {
 
     }
     if (get_external()) { //external function like putInteger(i32); which is equal to printf("%d", i32);
-        std::string var_name = "." + get_gvar();
+        Debug("Calling external function");
+        std::string var_name;
+        int message_size;
+        CallInst* ptr_malloc;
+        Function* func_malloc;
+        StoreInst* scanf_store;
+        ConstantInt* const_int64_16 = ConstantInt::get(mod->getContext(), APInt(64, StringRef("10"), 10));
+        if (get_name().compare("scanf") == 0) {
+            call_malloc(mod);
+            func_malloc = mod->getFunction("malloc");
+            ptr_malloc = CallInst::Create(func_malloc, const_int64_16, "", mblock->get_block());
+            ptr_malloc->setCallingConv(CallingConv::C);
+            ptr_malloc->setTailCall(false);
+            var_name = "scanf." + get_gvar();
+            message_size = 3;
+        } else {
+            var_name =  "printf." + get_gvar();
+            message_size = 4;
+        }
+
         GlobalVariable* gvar = mod->getGlobalVariable(var_name, true);
 
         if (!gvar) {
-            ArrayType* ArrayTy = ArrayType::get(IntegerType::get(mod->getContext(), 8), 4);
+            ArrayType* ArrayTy = ArrayType::get(IntegerType::get(mod->getContext(), 8), message_size);
             gvar = new GlobalVariable(/*Module=*/*mod, /*Type=*/ArrayTy,/*isConstant=*/true,
                 /*Linkage=*/GlobalValue::PrivateLinkage, /*Initializer=*/0,  /*Name=*/var_name );
         }
@@ -529,40 +567,69 @@ Value* CallFuncAST::codegen(Main_block* mblock) {
         std::vector<Value*> params;
         params.push_back(const_ptr);
 
-        if (isdigit(get_var()[0])) {
-            Constant* val = ConstantInt::get(Type::getInt32Ty(getGlobalContext()), std::stoi(get_var()) );
-            params.push_back(val);
-        }
-        else {
-            std::vector<Value*> ptr_indices;
+
+        if (get_name().compare("scanf") == 0) {
             Value* val;
             GlobalVariable* gval = mod->getGlobalVariable(get_var(), true);
             if (gval)
                 val = gval;
             else
                 val = func_block->get_var(get_var());
-            LoadInst* val_load;
-            bool load = false;
-            if (get_array()) {
-                load = true;
-                ConstantInt* const_int32_zero = ConstantInt::get(mod->getContext(), APInt(32, 0, 10));
-                ConstantInt* const_int32 = ConstantInt::get(mod->getContext(), APInt(32, get_array_pos(), 10));
-                ptr_indices.push_back(const_int32_zero);
-                ptr_indices.push_back(const_int32);
-                Instruction* ptr_getelement = GetElementPtrInst::Create(val, ptr_indices, "", mblock->get_block());
-                val_load = new LoadInst(ptr_getelement, "array_element", false, mblock->get_block());
-            } else {
-                if (get_message().compare("%s\n") == 0) {
-                    Type* string_ptr = Type::getInt8PtrTy(mod->getContext(), 0);
-                    BitCastInst* b_string = new llvm::BitCastInst(val, string_ptr, "", mblock->get_block() );
-                    params.push_back(b_string);
-                } else {
-                    load = true;
-                    val_load = new LoadInst( val, "", false, mblock->get_block());
-                }
+
+            if (get_gvar().compare("string") == 0) {
+                Type* string_ptr = Type::getInt8PtrTy(mod->getContext(), 0);
+                Type* string_ptr_ptr = PointerType::get(string_ptr, 0);
+                BitCastInst* b_string = new llvm::BitCastInst(val, string_ptr_ptr, "", mblock->get_block() );
+                scanf_store = new StoreInst(ptr_malloc, b_string, mblock->get_block());
+                LoadInst* scan_val = new LoadInst(b_string, "scanf_val", mblock->get_block());
+                val = scan_val;
+                if (!gval)
+                    func_block->change_var_value(get_var(), scan_val);
             }
-            if (load)
-                params.push_back(val_load);
+
+
+            ///TODO: make it work with global variables...
+            params.push_back(val);
+        }
+        else {
+            if (isdigit(get_var()[0])) {
+                Constant* val = ConstantInt::get(Type::getInt32Ty(getGlobalContext()), std::stoi(get_var()) );
+                params.push_back(val);
+            } else if (has_string) {
+                StringAST* s_message = new StringAST(get_string_message());
+                params.push_back(s_message->codegen(mblock));
+            }
+            else {
+                std::vector<Value*> ptr_indices;
+                Value* val;
+                GlobalVariable* gval = mod->getGlobalVariable(get_var(), true);
+                if (gval)
+                    val = gval;
+                else
+                    val = func_block->get_var(get_var());
+                LoadInst* val_load;
+                bool load = false;
+                if (get_array()) {
+                    load = true;
+                    ConstantInt* const_int32_zero = ConstantInt::get(mod->getContext(), APInt(32, 0, 10));
+                    ConstantInt* const_int32 = ConstantInt::get(mod->getContext(), APInt(32, get_array_pos(), 10));
+                    ptr_indices.push_back(const_int32_zero);
+                    ptr_indices.push_back(const_int32);
+                    Instruction* ptr_getelement = GetElementPtrInst::Create(val, ptr_indices, "", mblock->get_block());
+                    val_load = new LoadInst(ptr_getelement, "array_element", false, mblock->get_block());
+                } else {
+                    if (get_message().compare("%s\n") == 0) {
+                        Type* string_ptr = Type::getInt8PtrTy(mod->getContext(), 0);
+                        BitCastInst* b_string = new llvm::BitCastInst(val, string_ptr, "", mblock->get_block() );
+                        params.push_back(b_string);
+                    } else {
+                        load = true;
+                        val_load = new LoadInst( val, "", false, mblock->get_block());
+                    }
+                }
+                if (load)
+                    params.push_back(val_load);
+            }
         }
         call = CallInst::Create(func, params, "", mblock->get_block());
 
@@ -574,32 +641,9 @@ Value* CallFuncAST::codegen(Main_block* mblock) {
         auto mask_iterator = mask.begin();
         int count_mask = 0;
         std::vector<Value*> params;
-        auto args = get_args();
-        for (auto it = args.begin(); it != args.end(); it++, count_mask++) {
+        for (auto it = real_args.begin(); it != real_args.end(); it++, count_mask++) {
             if (*(mask_iterator + count_mask)) {
-            //Add arguments to call function
-                auto arg = *(it);
-                BasicAST* tmp;
-                if (isdigit(arg[0])) {
-                    std::string period = ".";
-                    std::size_t found = arg.find(period);
-                    if (found!=std::string::npos){
-                        Debug("float");
-                        tmp = new FloatAST(std::stof(arg));
-                        params.push_back(tmp->codegen(mblock));
-                    }
-                    else {
-                        Debug("integer");
-                        tmp = new IntegerAST(std::stoi(arg));
-                        params.push_back(tmp->codegen(mblock));
-                    }
-                }
-                else {
-                    Debug("string");
-                    Value* val = func_block->get_var(arg);
-                    LoadInst* val_load = new LoadInst( val , "", false, mblock->get_block());
-                    params.push_back(val_load);
-                }
+                params.push_back( (*it)->codegen(mblock) );
             }
         }
         //load return for the function called for the OUT variables
@@ -655,7 +699,15 @@ Value* FloatAST::codegen(Main_block* mblock) {
 //generate code for a float constant
 Value* StringAST::codegen(Main_block* mblock) {
     Debug("Creating string", value.c_str());
-    return ConstantInt::get(typeOf(T_STRING,1,6), 123456);
+    Module* mod = mblock->get_module();
+
+    AllocaInst* tmp_string = new AllocaInst(typeOf(T_STRING,1, value.size()+1), "", mblock->get_block());
+    Constant *const_array = ConstantDataArray::getString(mod->getContext(), value, true);
+    StoreInst* store_value = new StoreInst(const_array, tmp_string, mblock->get_block());
+    PointerType* ptr_string = PointerType::get(typeOf(T_STRING,0,0), 0);
+    llvm::CastInst* cast1 = new llvm::BitCastInst(tmp_string, ptr_string, "", mblock->get_block());
+
+    return cast1;
 }
 
 //generate code for an arithmetic binary expression
@@ -690,14 +742,28 @@ Value* CallVarAST::codegen(Main_block* mblock) {
     Module* mod = mblock->get_module();
     GlobalVariable* gvar = mod->getGlobalVariable(var_name, true);
     Value* val;
-    if (gvar) {
-        val = gvar;
-    } else {
-        val = func->get_var(var_name);
+    std::vector<Value*> ptr_indices;
+
+    if (get_array()) {
+        ConstantInt* const_int32_zero = ConstantInt::get(mod->getContext(), APInt(32, 0, 10));
+        ConstantInt* const_int32 = ConstantInt::get(mod->getContext(), APInt(32, get_array_pos(), 10));
+        ptr_indices.push_back(const_int32_zero);
+        ptr_indices.push_back(const_int32);
     }
 
-    LoadInst* val_load = new LoadInst( val , "", false, mblock->get_block());
-    return val_load;
+    if (!gvar) {
+        if (get_array()) {
+            Instruction* ptr_getelement = GetElementPtrInst::Create(val, ptr_indices, "", mblock->get_block());
+            return new LoadInst(  ptr_getelement, "", false, mblock->get_block());
+        }
+        return new LoadInst(val, "", false, mblock->get_block());
+    } else {
+        if (get_array()) {
+            Instruction* ptr_getelement = GetElementPtrInst::Create(gvar, ptr_indices, "", mblock->get_block());
+            return new LoadInst(  ptr_getelement, "", false, mblock->get_block());
+        }
+        return new LoadInst(gvar, "", false, mblock->get_block());
+    }
 }
 
 //generate return of a function and remove function from the statement list

@@ -230,11 +230,20 @@ void Scan_file::create_table() {
     insert_reserved("inout", TABLE_VALUE(T_INOUT));
     insert_reserved("true", TABLE_VALUE(T_TRUE));
     insert_reserved("false", TABLE_VALUE(T_FALSE));
-
+    //external functions
     insert_reserved("putbool", TABLE_VALUE(F_PUTBOOL));
     insert_reserved("putinteger", TABLE_VALUE(F_PUTINTEGER));
+    insert_reserved("putfloat", TABLE_VALUE(F_PUTFLOAT));
     insert_reserved("putstring", TABLE_VALUE(F_PUTSTRING));
     insert_reserved("putchar", TABLE_VALUE(F_PUTCHAR));
+    insert_reserved("getbool", TABLE_VALUE(F_GETBOOL));
+    insert_reserved("getinteger", TABLE_VALUE(F_GETINTEGER));
+    insert_reserved("getfloat", TABLE_VALUE(F_GETFLOAT));
+    insert_reserved("getstring", TABLE_VALUE(F_GETSTRING));
+    insert_reserved("getchar", TABLE_VALUE(F_GETCHAR));
+
+
+
 
 }
 

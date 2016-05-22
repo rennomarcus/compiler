@@ -210,7 +210,31 @@ StringAST* HandleString(Scan_file* scan, Main_block* mblock) {
         Error("Missing ';' after string");
     return message;
 }
+void HandleCallFunc(Scan_file* scan, Main_block* mblock, CallFuncAST* func) {
+    bool reading = false;
+    while (scan->get_tok() != T_SEMICOLON) {
+        scan->scan_tok();
+        std::string tmp_arg = scan->get_value();
+        BasicAST* tmp_basic;
+        if (scan->get_tok() == T_STRING_MESSAGE) {
+            tmp_arg = scan->get_value();
+            tmp_basic = new StringAST(tmp_arg);
+            reading = true;
+        } else if (scan->get_tok() != T_RPAREN && scan->get_tok() != T_SEMICOLON) {
+            reading = true;
+            std::vector<BasicAST*> tmp = HandleMath(scan, mblock);
 
+            for (auto it = tmp.begin(); it != tmp.end(); it++) {
+                tmp_basic = *it;
+                mblock->add_statement(*it);
+            }
+        }
+        if (reading) {
+            func->add_rarg(tmp_basic); //used as input
+            func->add_arg(tmp_arg); //used as output
+        }
+    }
+}
 void HandleStatement(Scan_file* scan, Main_block* mblock) {
     Debug("handle expr");
     if (scan->get_tok() == T_IDENTIFIER) {
@@ -219,11 +243,7 @@ void HandleStatement(Scan_file* scan, Main_block* mblock) {
             //handle call function;
             Debug("#call function", name.c_str());
             CallFuncAST* func = new CallFuncAST(name);
-
-            while (scan->scan_tok() != T_RPAREN) {
-                if (scan->get_tok() != T_COMMA)
-                    func->add_arg(scan->get_value());
-            }
+            HandleCallFunc(scan, mblock, func);
             mblock->add_statement(func);
         }
         if (scan->get_tok() == T_ASSIGN) {
@@ -256,18 +276,24 @@ void setExternalFunction(Scan_file* scan, Main_block* mblock, CallFuncAST* func,
     if (type == 1)
         func->set_name("printf");
     else
-        func->set_name("read");
+        func->set_name("scanf");
 
     int value = scan->get_tok();
     if (scan->scan_tok() != T_LPAREN)
         Error("Invalid function call");
-    if (scan->scan_tok() != T_IDENTIFIER && scan->get_tok() != T_INTEGER && scan->get_tok() != T_FLOAT && scan->get_tok() != '"')
+
+    if (scan->scan_tok() != T_IDENTIFIER && scan->get_tok() != T_INTEGER && scan->get_tok() != T_FLOAT && scan->get_tok() != T_STRING_MESSAGE)
         Error("Invalid function call");
     if (scan->get_tok() == '"') {
         Debug("==================Constant string");
     }
     func->set_message(value);
-    func->set_var(scan->get_value());
+
+    if (scan->get_tok() == T_STRING_MESSAGE) {
+        func->set_string_message(scan->get_value());
+    } else {
+        func->set_var(scan->get_value());
+    }
     if (scan->scan_tok() == T_ARRAY) {
         func->set_array(true);
         func->set_array_pos(std::stoi(scan->get_value()));
@@ -279,20 +305,13 @@ void ExternalFunctions(Scan_file* scan, Main_block* mblock) {
     func->set_external();
     func->set_message(scan->get_tok());
     switch (scan->get_tok()) {
-        case F_PUTBOOL:
+        case F_PUTBOOL: case F_PUTCHAR: case F_PUTINTEGER: case F_PUTSTRING:
             setExternalFunction(scan,mblock,func,1);
             break;
-        case F_PUTCHAR:
-            setExternalFunction(scan,mblock,func,1);
-            break;
-        case F_PUTINTEGER:
-            setExternalFunction(scan,mblock,func,1);
-            break;
-        case F_PUTSTRING:
-            setExternalFunction(scan,mblock,func,1);
+        case F_GETINTEGER: case F_GETSTRING:
+            setExternalFunction(scan,mblock,func,2);
             break;
     }
-
 }
 
 //handle beginning and closing program

@@ -64,15 +64,20 @@ using namespace std;
 #define F_PUTFLOAT 282
 #define F_PUTSTRING 283
 #define F_PUTCHAR 284
+#define F_GETBOOL 285
+#define F_GETINTEGER 286
+#define F_GETFLOAT 287
+#define F_GETSTRING 288
+#define F_GETCHAR 289
 
-#define T_STRING_MESSAGE 285
+#define T_STRING_MESSAGE 290
 
 #define T_EOF 349 // code used when at end of file
 #define T_UNKNOWN 350 // token was unrecognized by scanner
 
 #define error 666
 
-#define MAX_RESERVED_KEYS 29
+#define MAX_RESERVED_KEYS 35
 
 struct previous_scan {
     int token;

@@ -1,41 +1,9 @@
 #include "shunting_yard.h"
 
-/*void Shunting::check_parenthesis(char op) {
-    if (op == T_RPAREN)
-        inc_parenthesis();
-    else if (op = T_LPAREN)
-        dec_parenthesis();
-}
-//do this until get_parenthesis is 0
-Shunting::pop_operator() {
-    while (get_parenthesis() > 0) {
-        char tok1 = operators.back();
-        operators.pop_back();
-        char tok2 = operators.back();
-        int current = BinopPrecedence[tok];
-        int scanned = BinopPrecedence[tok2];
-
-
-        if (scanned > current) {
-            this->operators.push_back(tok);
-        }
-        while (!this->operators.empty() && scanned <= current && get_parenthesis() > 0) {
-            token temp;
-            temp.token_type = this->operators.back();
-            this->operators.pop_back();
-            this->equation.push_back(temp);
-            if (!this->operators.empty()) {
-                current = BinopPrecedence[this->operators.back()];
-            }
-        }
-        this->operators.push_back(tok);
-    }
-}*/
-
 Shunting::Shunting(Scan_file *scan) {
     int tok;
     set_parenthesis(0);
-    while (scan->get_tok() != T_SEMICOLON) {
+    while (scan->get_tok() != T_SEMICOLON && scan->get_tok() != T_COMMA) {
         int tok = scan->get_tok();
         token t;
         t.token_type = tok;
