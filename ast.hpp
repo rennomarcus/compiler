@@ -153,10 +153,15 @@ class BinopAST : public BasicAST {
     char op;
     BasicAST* op1;
     BasicAST* op2;
-
+    int type;
+    std::string var;
     public:
+
+    void set_type(int t, std::string v) { type = t; var = v; }
+    int get_type() { return type; }
+    std::string get_var() { return var; }
     void print() { Debug("(print) bin op"); }
-    BinopAST(char op, BasicAST* op1, BasicAST* op2) : op(op),op1(op1),op2(op2) {}
+    BinopAST(char op, BasicAST* op1, BasicAST* op2) : op(op),op1(op1),op2(op2) { set_type(0, ""); }
     llvm::Value* codegen(Main_block*);
 };
 
@@ -181,7 +186,7 @@ class FlowBlock : public BasicAST {
 class CondAST : public FlowBlock {
     llvm::Function* func; //functio this condition belongs to
     int state; //shows if cond is true or in false state
-
+    bool in_for;
     llvm::BasicBlock* cond_true; //block when the cond is true
     llvm::BasicBlock* cond_false; //block when the cond is false
 
@@ -196,25 +201,53 @@ class CondAST : public FlowBlock {
     std::vector<BasicAST*> get_true_statement() { return this->true_statements; }
     std::vector<BasicAST*> get_false_statement() { return this->false_statements; }
     void set_state(int s) { this->state = s; }
-
+    void set_in_for(bool s) { this->in_for = s; }
     void print() { Debug("(print) if block"); }
     void add_condition(BasicAST* lhs, int operand, BasicAST* rhs);
     void add_statement(BasicAST*);
     void change_state() { state++; }
     int get_state() { return this->state; }
+    bool get_in_for() { return this->in_for; }
 
-    CondAST() { set_state(0); };
+    CondAST() { set_state(0); set_in_for(false); };
     llvm::Value* codegen(Main_block*);
+};
+
+class ForAST : public FlowBlock {
+    std::string incr_var;
+    CondAST* cond;
+    int state;
+
+    public:
+    void print() { Debug("(print) for block"); }
+    void add_cond(CondAST* c) { this->cond = c;}
+    void add_statement(BasicAST* b) { cond->add_statement(b); };
+    void add_incr_var(std::string v) { incr_var = v; }
+
+    void change_state() { state++; }
+    int get_state() { return this->state; }
+    std::string get_incr_var() { return incr_var; }
+    ForAST() {};
+    llvm::Value* codegen(Main_block*);
+};
+
+class BranchAST : public BasicAST {
+    llvm::BasicBlock* branch;
+    public:
+    BranchAST(llvm::BasicBlock* bb) { branch = bb; Debug("Branch instr"); }
+
+    void print() { Debug("(print) Branch instr"); }
+    llvm::Value* codegen(Main_block *);
 };
 
 class EndFunctionAST : public BasicAST {
     bool return_statement;
     public:
-    EndFunctionAST() { return_statement = false; Debug("(print) end function"); }
-    EndFunctionAST(bool val) { return_statement = val; Debug("(print) end function using return"); }
+    EndFunctionAST() { return_statement = false; Debug("End function"); }
+    EndFunctionAST(bool val) { return_statement = val; Debug("End function using return"); }
 
     bool get_return() { return return_statement; }
-    void print() { }
+    void print() { Debug("(print) end function"); }
     llvm::Value* codegen(Main_block *);
 };
 

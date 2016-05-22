@@ -15,7 +15,7 @@ void HandleReturn(Scan_file *, Main_block*);
 void HandleTopLevelExpression(Scan_file*, Main_block*);
 void HandleStatement(Scan_file*, Main_block*);
 void HandleIfBlock(Scan_file*, Main_block*);
-CondAST* HandleIfCond(Scan_file*, Main_block*);
+CondAST* HandleIfCond(Scan_file*, Main_block*, bool);
 int HandleIfOperator(Scan_file*, Main_block*);
 void HandleElseBlock(Scan_file*, Main_block*);
 void HandleForBlock(Scan_file*, Main_block*);

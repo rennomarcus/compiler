@@ -65,12 +65,19 @@ void HandleReturn(Scan_file* scan, Main_block* mblock) {
 
 //check (if, then, else) blocks
 void HandleForBlock(Scan_file* scan, Main_block* mblock) {
+    ForAST* forblock = new ForAST();
     CondAST* cond;
     Debug("If block");
     if (scan->get_tok() == T_FOR) {
-
         if (scan->scan_tok() == T_LPAREN) {
-
+            scan->scan_tok();
+            forblock->add_incr_var(scan->get_value());
+            HandleStatement(scan, mblock);
+            cond = HandleIfCond(scan, mblock, 0);
+            forblock->add_cond(cond);
+            mblock->add_special(forblock, 2);
+        } else {
+            Error("Missing left parenthesis after the FOR keyword");
         }
     }
 }
@@ -82,7 +89,7 @@ void HandleIfBlock(Scan_file* scan, Main_block* mblock) {
     if (scan->get_tok() == T_IF) {
         scan->scan_tok();
         if (scan->get_tok() == T_LPAREN) {
-            cond = HandleIfCond(scan, mblock);
+            cond = HandleIfCond(scan, mblock, 1);
             mblock->add_special(cond, 1);
         }
     }
@@ -92,7 +99,7 @@ void HandleElseBlock(Scan_file* scan, Main_block* mblock) {
 }
 
 //create condition
-CondAST* HandleIfCond(Scan_file* scan, Main_block* mblock) {
+CondAST* HandleIfCond(Scan_file* scan, Main_block* mblock, bool check_then) {
     int tok1 = scan->scan_tok();
     std::string value = scan->get_value();
     CondAST* cond = new CondAST();
@@ -120,7 +127,8 @@ CondAST* HandleIfCond(Scan_file* scan, Main_block* mblock) {
             cond->add_condition(lhs, operand, rhs);
             scan->scan_tok();
         }
-        scan->scan_tok();
+        if (check_then)
+            scan->scan_tok();
     }
 
     return cond;
@@ -341,12 +349,20 @@ void HandleFunction(Scan_file *scan, Main_block *mblock) {
 void HandleEnd(Scan_file *scan, Main_block *mblock) {
     if (scan->scan_tok() == T_IF) {
         if (scan->scan_tok() == T_SEMICOLON) {
-            //mblock->add_statement(cond);
             mblock->pop_special();
             Debug("Leaving if block");
         }
         else {
-            Error("Missing ; after end if statement");
+            Error("Missing ; after END IF statement");
+        }
+    }
+    if  (scan->get_tok() == T_FOR) {
+        if (scan->scan_tok() == T_SEMICOLON) {
+            mblock->pop_special();
+            Debug("Leaving for block");
+        }
+        else {
+            Error("Missing ; after END FOR statement");
         }
     }
     else if (scan->get_tok() == T_PROCEDURE) {
@@ -374,7 +390,6 @@ VariableAST* HandleVariableDeclaration(Scan_file *scan, Main_block *mblock) {
 
     int type = scan->get_tok();
     if (scan->scan_tok() != T_IDENTIFIER) {
-        std::cout << scan->get_tok() << std::endl;
         Error("Missing name for variable");
         return nullptr;
     }

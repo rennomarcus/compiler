@@ -251,12 +251,8 @@ std::vector<Type *> FunctionAST::get_args_type() {
     return types;
 }
 void SpecialBlock::add_block(FlowBlock* special, int type) {
-    FlowBlock* sb;
-    if (type == 1) {
-        sb = special;
-        sb->set_type(1);
-    }
-    this->blocks.push_back(sb);
+    special->set_type(type);
+    this->blocks.push_back(special);
 }
 FlowBlock* SpecialBlock::get_block() {
     return this->blocks.back();
@@ -539,7 +535,12 @@ Value* CallFuncAST::codegen(Main_block* mblock) {
         }
         else {
             std::vector<Value*> ptr_indices;
-            Value* val = func_block->get_var(get_var());
+            Value* val;
+            GlobalVariable* gval = mod->getGlobalVariable(get_var(), true);
+            if (gval)
+                val = gval;
+            else
+                val = func_block->get_var(get_var());
             LoadInst* val_load;
             bool load = false;
             if (get_array()) {
@@ -663,8 +664,14 @@ Value* BinopAST::codegen(Main_block* mblock) {
     llvm::Value* lhs = (this->op1)->codegen(mblock);
     llvm::Value* rhs = (this->op2)->codegen(mblock);
     Value* binop;
-    if (this->op == '+')
+    if (this->op == '+') {
         binop = BinaryOperator::Create(Instruction::Add, rhs, lhs, "add", mblock->get_block());
+        if (get_type()) {
+            Value *var = mblock->get_func()->get_var(get_var());
+            StoreInst* store = new StoreInst(binop, var, false, mblock->get_block());
+        }
+    }
+
     else if (this->op == '-')
         binop = BinaryOperator::Create(Instruction::Sub, rhs, lhs, "sub", mblock->get_block());
     else if (this->op == '*')
@@ -721,7 +728,9 @@ Value* CondAST::codegen(Main_block* mblock) {
     llvm::BasicBlock* current_block = mblock->get_block();
     llvm::BasicBlock* cond_true = BasicBlock::Create(getGlobalContext(), "cond_true", func);
     llvm::BasicBlock* cond_false = BasicBlock::Create(getGlobalContext(), "cond_false", func);
-    llvm::BasicBlock* merge_cond = BasicBlock::Create(getGlobalContext(), "cond_cont", func);
+    llvm::BasicBlock* merge_cond;
+
+    if (!get_in_for()) merge_cond = BasicBlock::Create(getGlobalContext(), "cond_cont", func);
 
     Value* lhs = (this->lhs.back())->codegen(mblock);
     Value* rhs = (this->rhs.back())->codegen(mblock);
@@ -759,7 +768,7 @@ Value* CondAST::codegen(Main_block* mblock) {
     }
 
     llvm::Value* cond = Builder.CreateCondBr(comp, cond_true, cond_false);
-
+    //create entry when condition is true
     Builder.SetInsertPoint(cond_true);
     mblock->add_block(cond_true);
     std::vector<BasicAST*> tmp = get_true_statement();
@@ -767,8 +776,9 @@ Value* CondAST::codegen(Main_block* mblock) {
         (*it)->codegen(mblock);
     }
     mblock->pop_block();
-    Builder.CreateBr(merge_cond);
+    if (!get_in_for()) Builder.CreateBr(merge_cond);
 
+    //create entry when condition is false
     Builder.SetInsertPoint(cond_false);
     mblock->add_block(cond_false);
     tmp = get_false_statement();
@@ -776,14 +786,59 @@ Value* CondAST::codegen(Main_block* mblock) {
         (*it)->codegen(mblock);
     }
     mblock->pop_block();
-    Builder.CreateBr(merge_cond);
+    if (!get_in_for()) {
+        Builder.CreateBr(merge_cond);
 
-    mblock->pop_block();
-    mblock->add_block(merge_cond);
-    Builder.SetInsertPoint(merge_cond);
+        mblock->pop_block();
+        mblock->add_block(merge_cond);
+        Builder.SetInsertPoint(merge_cond);
+    }
 
     Debug("Leaving conditional block");
     return nullptr;
 }
 
+Value* ForAST::codegen(Main_block* mblock) {
+    Debug("Creating for block");
+    FunctionAST* func_ast = mblock->get_func();
+    llvm::Function* func = func_ast->get_func();
+    this->cond->set_in_for(true);
+    llvm::BasicBlock* for_loop = BasicBlock::Create(getGlobalContext(), "for_loop", func);
+    llvm::BasicBlock* for_continue = BasicBlock::Create(getGlobalContext(), "for_continue", func);
 
+    //branch instructions of the for loop
+    BranchAST* repeat = new BranchAST(for_loop);
+    BranchAST* endfor = new BranchAST(for_continue);
+
+    //init of for loop
+    repeat->codegen(mblock);
+    Builder.SetInsertPoint(for_loop);
+    mblock->add_block(for_loop);
+
+    //add statements to the end of for loop (increment and branch instructions)
+    CallVarAST* var = new CallVarAST(get_incr_var());
+    IntegerAST* one = new IntegerAST(1);
+    BinopAST* incr = new BinopAST('+', var, one);
+    incr->set_type(1, get_incr_var());
+    add_statement(incr);
+    add_statement(repeat);
+
+    //add statements to continue the function when condition is not met anymore
+    this->cond->change_state();
+    add_statement(endfor);
+    this->cond->codegen(mblock);
+    mblock->pop_block();
+
+    mblock->pop_block();
+    mblock->add_block(for_continue);
+    Builder.SetInsertPoint(for_continue);
+
+
+    return nullptr;
+}
+
+Value* BranchAST::codegen(Main_block* mblock) {
+    Debug("Branch Instruction");
+    Builder.CreateBr(branch);
+    return nullptr;
+}
